@@ -220,7 +220,7 @@ export default function SettingsScreen({ onBack }) {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ flexShrink: 0, padding: '20px 20px 16px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
+      <div style={{ flexShrink: 0, padding: 'calc(env(safe-area-inset-top) + 20px) 20px 16px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <Icon name="back" size={16} color={C.textMid} />

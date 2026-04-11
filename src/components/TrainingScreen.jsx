@@ -614,7 +614,7 @@ export default function TrainingScreen({ onBack, onSettings }) {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
       {/* Header — plain flex item, never scrolls */}
-      <div style={{ flexShrink: 0, padding: '20px 20px 4px', background: C.bg }}>
+      <div style={{ flexShrink: 0, padding: 'calc(env(safe-area-inset-top) + 20px) 20px 4px', background: C.bg }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="back" size={16} color={C.textMid} />

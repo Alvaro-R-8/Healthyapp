@@ -31,7 +31,7 @@ export default function Home({ onNavigate }) {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto' }}>
-      <div style={{ padding: '56px 24px 0' }}>
+      <div style={{ padding: 'calc(env(safe-area-inset-top) + 56px) 24px 0' }}>
         <div style={{ fontSize: 10, color: C.blue, letterSpacing: '0.2em', fontFamily: mono, marginBottom: 8 }}>
           HEALTHYAPP
         </div>
@@ -63,7 +63,7 @@ export default function Home({ onNavigate }) {
       <button
         onClick={() => onNavigate('settings')}
         style={{
-          position: 'fixed', top: 20, right: 20,
+          position: 'fixed', top: 'calc(env(safe-area-inset-top) + 12px)', right: 20,
           background: C.surfaceHigh, border: `1px solid ${C.border}`,
           borderRadius: 10, width: 38, height: 38,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
