@@ -5,19 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "prebuild": "node scripts/generate-icons.js",
     "build": "vite build",
     "preview": "vite preview --host"
   },
   "dependencies": {
+    "date-fns": "^3.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.8.0",
-    "date-fns": "^3.0.6"
+    "recharts": "^2.8.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
+    "sharp": "^0.33.5",
     "tailwindcss": "^3.3.5",
     "vite": "^5.0.0",
     "vite-plugin-pwa": "^0.17.0"
