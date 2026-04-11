@@ -54,6 +54,24 @@ function RunModal({ session, completed, onToggle, onEdit, onClose, comment, onSa
             </div>
           </div>
 
+          {/* ── MIS NOTAS — always at the top so it's easy to find ── */}
+          <div style={{ background: '#1a1200', border: `1px solid ${C.amber}44`, borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: C.amber, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono, fontWeight: 700 }}>✏️ MIS NOTAS</div>
+            <textarea
+              value={commentText}
+              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
+              placeholder="Cómo fue la sesión, sensaciones, qué ajustar..."
+              rows={2}
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, borderRadius: 0, padding: '4px 0 8px', color: C.text, fontFamily: sans, outline: 'none', resize: 'none', lineHeight: 1.55 }}
+            />
+            <button
+              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
+              style={{ marginTop: 8, padding: '5px 14px', background: commentSaved ? C.greenDeep : '#2a1e00', border: `1px solid ${commentSaved ? C.greenBorder : C.amber + '55'}`, borderRadius: 7, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.amber, fontFamily: mono, cursor: 'pointer' }}
+            >
+              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
+            </button>
+          </div>
+
           <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
             {[
               { icon: 'map', label: 'Distancia', value: session.distance, c: session.color },
@@ -86,28 +104,11 @@ function RunModal({ session, completed, onToggle, onEdit, onClose, comment, onSa
           )}
 
           {session.notes && (
-            <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
-              <div style={{ fontSize: 10, color: C.amber, letterSpacing: '0.08em', marginBottom: 4, fontFamily: mono }}>NOTA</div>
+            <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: C.amber, letterSpacing: '0.08em', marginBottom: 4, fontFamily: mono }}>NOTA DEL PLAN</div>
               <div style={{ fontSize: 13, color: '#D1D5DB', lineHeight: 1.6 }}>{session.notes}</div>
             </div>
           )}
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono }}>MIS NOTAS</div>
-            <textarea
-              value={commentText}
-              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
-              placeholder="Cómo fue la sesión, sensaciones, ajustes..."
-              rows={2}
-              style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', color: C.text, fontFamily: sans, fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.55 }}
-            />
-            <button
-              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
-              style={{ marginTop: 6, padding: '6px 14px', background: commentSaved ? C.greenDeep : C.surfaceHigh, border: `1px solid ${commentSaved ? C.greenBorder : C.border}`, borderRadius: 8, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.textMid, fontFamily: mono, cursor: 'pointer' }}
-            >
-              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
-            </button>
-          </div>
 
           <button onClick={onToggle} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: completed ? C.greenDeep : session.color, color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: display, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Icon name="check" size={18} color="#fff" />
@@ -148,6 +149,24 @@ function GymModal({ session, completed, onToggle, onEdit, onClose, comment, onSa
             </div>
           </div>
 
+          {/* ── MIS NOTAS — always at the top ── */}
+          <div style={{ background: '#1a1200', border: `1px solid ${C.amber}44`, borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: C.amber, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono, fontWeight: 700 }}>✏️ MIS NOTAS</div>
+            <textarea
+              value={commentText}
+              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
+              placeholder="Cómo fue la sesión, sensaciones, qué ajustar..."
+              rows={2}
+              style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, borderRadius: 0, padding: '4px 0 8px', color: C.text, fontFamily: sans, outline: 'none', resize: 'none', lineHeight: 1.55 }}
+            />
+            <button
+              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
+              style={{ marginTop: 8, padding: '5px 14px', background: commentSaved ? C.greenDeep : '#2a1e00', border: `1px solid ${commentSaved ? C.greenBorder : C.amber + '55'}`, borderRadius: 7, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.amber, fontFamily: mono, cursor: 'pointer' }}
+            >
+              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
+            </button>
+          </div>
+
           {session.exercises?.length > 0 && (
             <>
               <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.1em', marginBottom: 10, fontFamily: mono }}>EJERCICIOS</div>
@@ -167,23 +186,6 @@ function GymModal({ session, completed, onToggle, onEdit, onClose, comment, onSa
               </div>
             </>
           )}
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono }}>MIS NOTAS</div>
-            <textarea
-              value={commentText}
-              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
-              placeholder="Cómo fue la sesión, sensaciones, ajustes..."
-              rows={2}
-              style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', color: C.text, fontFamily: sans, fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.55 }}
-            />
-            <button
-              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
-              style={{ marginTop: 6, padding: '6px 14px', background: commentSaved ? C.greenDeep : C.surfaceHigh, border: `1px solid ${commentSaved ? C.greenBorder : C.border}`, borderRadius: 8, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.textMid, fontFamily: mono, cursor: 'pointer' }}
-            >
-              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
-            </button>
-          </div>
 
           <button onClick={onToggle} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: completed ? C.greenDeep : session.color, color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: display, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Icon name="check" size={18} color="#fff" />
