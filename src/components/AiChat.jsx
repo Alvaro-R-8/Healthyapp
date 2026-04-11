@@ -51,6 +51,12 @@ export default function AiChat({ mode, context }) {
     setMsgs(newMsgs);
     setLoading(true);
     try {
+      // API requires messages to start with 'user' — skip any leading assistant messages
+      const firstUserIdx = newMsgs.findIndex(m => m.role === 'user');
+      const apiMessages = newMsgs.slice(firstUserIdx).map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.text,
+      }));
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -61,18 +67,25 @@ export default function AiChat({ mode, context }) {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
+          max_tokens: 1024,
           system: systemPrompt,
-          messages: newMsgs.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.text })),
+          messages: apiMessages,
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        const errMsg = data.error?.message || `Error ${res.status}`;
+        setMsgs(p => [...p, { role: 'assistant', text: `⚠️ ${errMsg}` }]);
+        setLoading(false);
+        return;
+      }
       const reply = data.content?.map(c => c.text || '').join('').trim();
-      setMsgs(p => [...p, { role: 'assistant', text: reply || 'Error al procesar la respuesta.' }]);
-    } catch {
-      setMsgs(p => [...p, { role: 'assistant', text: 'Error de conexión. Inténtalo de nuevo.' }]);
+      setMsgs(p => [...p, { role: 'assistant', text: reply || '(respuesta vacía)' }]);
+    } catch (err) {
+      setMsgs(p => [...p, { role: 'assistant', text: 'Error de conexión. Comprueba tu red e inténtalo de nuevo.' }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const sheet = {

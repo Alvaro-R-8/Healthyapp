@@ -110,7 +110,7 @@ export default function WeightScreen({ onBack, onSettings }) {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
       {/* Header */}
-      <div style={{ padding: '20px 20px 12px', position: 'sticky', top: 0, background: C.bg, zIndex: 10, borderBottom: `1px solid ${C.surface}` }}>
+      <div className="screen-header" style={{ padding: '20px 20px 12px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="back" size={16} color={C.textMid} />

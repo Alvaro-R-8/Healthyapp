@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { C, mono, sans, display } from '../utils/design.js';
-import { getPlan, setPlan, getCompleted, toggleCompleted, updateSessionInPlan } from '../utils/storage.js';
+import { getPlan, setPlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
 import { isPast, isToday, formatDateShort, getMonthLabel, getMonthShort, todayStr } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
@@ -26,9 +26,11 @@ function groupByMonth(plan) {
 }
 
 // ── Run Detail Modal ──────────────────────────────────────────────────────────
-function RunModal({ session, completed, onToggle, onEdit, onClose }) {
+function RunModal({ session, completed, onToggle, onEdit, onClose, comment, onSaveComment }) {
   const past = isPast(session.date);
   const today = isToday(session.date);
+  const [commentText, setCommentText] = useState(comment || '');
+  const [commentSaved, setCommentSaved] = useState(false);
   const ec = effortColor[session.effort] || C.textMid;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -90,6 +92,23 @@ function RunModal({ session, completed, onToggle, onEdit, onClose }) {
             </div>
           )}
 
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono }}>MIS NOTAS</div>
+            <textarea
+              value={commentText}
+              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
+              placeholder="Cómo fue la sesión, sensaciones, ajustes..."
+              rows={2}
+              style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', color: C.text, fontFamily: sans, fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.55 }}
+            />
+            <button
+              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
+              style={{ marginTop: 6, padding: '6px 14px', background: commentSaved ? C.greenDeep : C.surfaceHigh, border: `1px solid ${commentSaved ? C.greenBorder : C.border}`, borderRadius: 8, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.textMid, fontFamily: mono, cursor: 'pointer' }}
+            >
+              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
+            </button>
+          </div>
+
           <button onClick={onToggle} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: completed ? C.greenDeep : session.color, color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: display, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Icon name="check" size={18} color="#fff" />
             {completed ? '✓ Completada' : 'Marcar como completada'}
@@ -101,9 +120,11 @@ function RunModal({ session, completed, onToggle, onEdit, onClose }) {
 }
 
 // ── Gym Detail Modal ──────────────────────────────────────────────────────────
-function GymModal({ session, completed, onToggle, onEdit, onClose }) {
+function GymModal({ session, completed, onToggle, onEdit, onClose, comment, onSaveComment }) {
   const past = isPast(session.date);
   const today = isToday(session.date);
+  const [commentText, setCommentText] = useState(comment || '');
+  const [commentSaved, setCommentSaved] = useState(false);
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ background: C.bg, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480, maxHeight: '92vh', overflowY: 'auto', paddingBottom: 32, border: `1px solid ${C.border}`, borderBottom: 'none' }}>
@@ -146,6 +167,23 @@ function GymModal({ session, completed, onToggle, onEdit, onClose }) {
               </div>
             </>
           )}
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.1em', marginBottom: 6, fontFamily: mono }}>MIS NOTAS</div>
+            <textarea
+              value={commentText}
+              onChange={e => { setCommentText(e.target.value); setCommentSaved(false); }}
+              placeholder="Cómo fue la sesión, sensaciones, ajustes..."
+              rows={2}
+              style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', color: C.text, fontFamily: sans, fontSize: 13, outline: 'none', resize: 'none', lineHeight: 1.55 }}
+            />
+            <button
+              onClick={() => { onSaveComment(session.id, commentText); setCommentSaved(true); }}
+              style={{ marginTop: 6, padding: '6px 14px', background: commentSaved ? C.greenDeep : C.surfaceHigh, border: `1px solid ${commentSaved ? C.greenBorder : C.border}`, borderRadius: 8, fontSize: 11, color: commentSaved ? '#6EE7B7' : C.textMid, fontFamily: mono, cursor: 'pointer' }}
+            >
+              {commentSaved ? '✓ Guardado' : 'Guardar nota'}
+            </button>
+          </div>
 
           <button onClick={onToggle} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: completed ? C.greenDeep : session.color, color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: display, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Icon name="check" size={18} color="#fff" />
@@ -347,7 +385,7 @@ function ImportModal({ onImport, onClose }) {
 }
 
 // ── Session Row ───────────────────────────────────────────────────────────────
-function SessionRow({ session, completed, onToggle, onDetail }) {
+function SessionRow({ session, completed, onToggle, onDetail, hasComment }) {
   if (session.type === 'rest') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', opacity: 0.2 }}>
@@ -375,7 +413,10 @@ function SessionRow({ session, completed, onToggle, onDetail }) {
           {past && !completed && <Icon name="lock" size={11} color={C.textLow} />}
         </div>
         <div style={{ fontSize: 13, fontWeight: 600, color: completed ? '#6EE7B7' : C.text, lineHeight: 1.2, marginTop: 1 }}>{session.title}</div>
-        {session.subtitle && <div style={{ fontSize: 11, color: C.textLow, marginTop: 1 }}>{session.subtitle}</div>}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 1 }}>
+          {session.subtitle && <div style={{ fontSize: 11, color: C.textLow }}>{session.subtitle}</div>}
+          {hasComment && <div style={{ fontSize: 9, color: C.amber, fontFamily: mono }}>📝</div>}
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         <button onClick={() => onDetail(session)} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 11, color: C.textMid, cursor: 'pointer', fontFamily: mono }}>Ver →</button>
@@ -388,13 +429,14 @@ function SessionRow({ session, completed, onToggle, onDetail }) {
 }
 
 // ── Week Card ─────────────────────────────────────────────────────────────────
-function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSession }) {
+function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSession, comments, onSaveComment }) {
   const [detailSession, setDetailSession] = useState(null);
   const [editSession, setEditSession] = useState(null);
 
   const active = week.sessions.filter(s => s.type !== 'rest');
   const done = active.filter(s => completed[s.id]).length;
   const pct = active.length ? done / active.length : 0;
+  const hasToday = week.sessions.some(s => isToday(s.date));
 
   const handleEdit = (session) => {
     setDetailSession(null);
@@ -409,10 +451,10 @@ function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSessi
   return (
     <div style={{ marginBottom: 10 }}>
       {detailSession && detailSession.type === 'run' && (
-        <RunModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} />
+        <RunModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />
       )}
       {detailSession && detailSession.type === 'gym' && (
-        <GymModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} />
+        <GymModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />
       )}
       {editSession && editSession.type === 'run' && (
         <EditRunModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />
@@ -421,7 +463,7 @@ function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSessi
         <EditGymModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />
       )}
 
-      <button onClick={onToggleOpen} style={{ width: '100%', background: isOpen ? C.surfaceHigh : C.surface, border: `1px solid ${isOpen ? C.borderHigh : C.border}`, borderRadius: isOpen ? '14px 14px 0 0' : 14, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
+      <button onClick={onToggleOpen} style={{ width: '100%', background: hasToday ? '#0e1a2e' : (isOpen ? C.surfaceHigh : C.surface), border: `1px solid ${hasToday ? C.blue : (isOpen ? C.borderHigh : C.border)}`, borderRadius: isOpen ? '14px 14px 0 0' : 14, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div>
             <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.12em', fontFamily: mono, marginBottom: 2 }}>
@@ -429,6 +471,7 @@ function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSessi
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: display, display: 'flex', alignItems: 'center', gap: 8 }}>
               {week.label}
+              {hasToday && <span style={{ fontSize: 9, background: C.blue + '33', color: C.blue, padding: '2px 7px', borderRadius: 5, fontFamily: mono, fontWeight: 700 }}>HOY</span>}
               {week.isRecovery && <span style={{ fontSize: 9, background: '#1e3a5f', color: '#60A5FA', padding: '2px 7px', borderRadius: 5, fontFamily: mono }}>RECUPERACIÓN</span>}
             </div>
           </div>
@@ -455,7 +498,7 @@ function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSessi
       {isOpen && (
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderTop: 'none', borderRadius: '0 0 14px 14px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
           {week.sessions.map(s => (
-            <SessionRow key={s.id} session={s} completed={!!completed[s.id]} onToggle={onToggle} onDetail={setDetailSession} />
+            <SessionRow key={s.id} session={s} completed={!!completed[s.id]} onToggle={onToggle} onDetail={setDetailSession} hasComment={!!comments[s.id]} />
           ))}
         </div>
       )}
@@ -486,9 +529,11 @@ function EmptyState({ onImport }) {
 export default function TrainingScreen({ onBack, onSettings }) {
   const [plan, setPlanState] = useState(() => getPlan());
   const [completed, setCompleted] = useState(() => getCompleted());
+  const [comments, setComments] = useState(() => getComments());
   const [showImport, setShowImport] = useState(false);
   const [monthIdx, setMonthIdx] = useState(0);
   const [openWeekId, setOpenWeekId] = useState(null);
+  const [exportToast, setExportToast] = useState('');
 
   const { keys: monthKeys, map: weeksByMonth } = useMemo(() => groupByMonth(plan), [plan]);
 
@@ -525,6 +570,34 @@ export default function TrainingScreen({ onBack, onSettings }) {
     setPlanState(updated);
   };
 
+  const handleSaveComment = (sessionId, text) => {
+    setComments(setComment(sessionId, text));
+  };
+
+  const handleExportPlan = () => {
+    if (!plan) return;
+    const json = JSON.stringify(plan, null, 2);
+    // Try clipboard first, fallback to download
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(json).then(() => {
+        setExportToast('Plan copiado al portapapeles');
+        setTimeout(() => setExportToast(''), 3000);
+      }).catch(() => downloadPlan(json));
+    } else {
+      downloadPlan(json);
+    }
+  };
+
+  const downloadPlan = (json) => {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${plan.id || 'plan'}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    setExportToast('Plan descargado');
+    setTimeout(() => setExportToast(''), 3000);
+  };
+
   const currentMonthKey = monthKeys[monthIdx];
   const currentWeeks = currentMonthKey ? (weeksByMonth[currentMonthKey] || []) : [];
   const allActive = currentWeeks.flatMap(w => w.sessions.filter(s => s.type !== 'rest'));
@@ -534,7 +607,7 @@ export default function TrainingScreen({ onBack, onSettings }) {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
       {/* Header */}
-      <div style={{ padding: '20px 20px 0', position: 'sticky', top: 0, background: C.bg, zIndex: 10, paddingBottom: 4 }}>
+      <div className="screen-header" style={{ padding: '20px 20px 4px', background: C.bg }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="back" size={16} color={C.textMid} />
@@ -589,24 +662,39 @@ export default function TrainingScreen({ onBack, onSettings }) {
               isOpen={openWeekId === week.id}
               onToggleOpen={() => setOpenWeekId(p => p === week.id ? null : week.id)}
               onEditSession={handleEditSession}
+              comments={comments}
+              onSaveComment={handleSaveComment}
             />
           ))
         )}
       </div>
 
-      {/* Import button */}
-      <button
-        onClick={() => setShowImport(true)}
-        style={{
-          position: 'fixed', bottom: 88, left: 20, height: 44,
-          background: C.surfaceHigh, border: `1px solid ${C.blue}66`,
-          borderRadius: 22, display: 'flex', alignItems: 'center', gap: 8,
-          padding: '0 16px', cursor: 'pointer', zIndex: 50,
-        }}
-      >
-        <Icon name="upload" size={16} color={C.blue} />
-        <span style={{ fontSize: 12, color: C.blue, fontFamily: mono, fontWeight: 600 }}>Importar plan</span>
-      </button>
+      {/* Floating buttons: import + export */}
+      <div style={{ position: 'fixed', bottom: 88, left: 20, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 50 }}>
+        <button
+          onClick={() => setShowImport(true)}
+          style={{ height: 40, background: C.surfaceHigh, border: `1px solid ${C.blue}66`, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', cursor: 'pointer' }}
+        >
+          <Icon name="upload" size={14} color={C.blue} />
+          <span style={{ fontSize: 11, color: C.blue, fontFamily: mono, fontWeight: 600 }}>Importar</span>
+        </button>
+        {plan && (
+          <button
+            onClick={handleExportPlan}
+            style={{ height: 40, background: C.surfaceHigh, border: `1px solid ${C.green}55`, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', cursor: 'pointer' }}
+          >
+            <Icon name="download" size={14} color={C.green} />
+            <span style={{ fontSize: 11, color: C.green, fontFamily: mono, fontWeight: 600 }}>Exportar</span>
+          </button>
+        )}
+      </div>
+
+      {/* Toast */}
+      {exportToast && (
+        <div style={{ position: 'fixed', bottom: 160, left: '50%', transform: 'translateX(-50%)', background: C.greenDeep, border: `1px solid ${C.greenBorder}`, borderRadius: 10, padding: '10px 18px', fontSize: 13, color: '#6EE7B7', fontFamily: mono, zIndex: 100, whiteSpace: 'nowrap' }}>
+          ✓ {exportToast}
+        </div>
+      )}
 
       {showImport && <ImportModal onImport={handleImport} onClose={() => setShowImport(false)} />}
 

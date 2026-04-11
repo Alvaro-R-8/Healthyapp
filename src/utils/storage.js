@@ -1,6 +1,7 @@
 const KEYS = {
   PLAN: 'happ_plan',
   COMPLETED: 'happ_completed',
+  COMMENTS: 'happ_comments',
   WEIGHT: 'happ_weight',
   API_KEY: 'happ_api_key',
 };
@@ -52,6 +53,18 @@ export function toggleCompleted(sessionId) {
   return next;
 }
 
+// ── Comments ─────────────────────────────────────────────────────────────────
+export const getComments = () => read(KEYS.COMMENTS, {});
+
+export function setComment(sessionId, text) {
+  const comments = getComments();
+  const next = { ...comments };
+  if (text && text.trim()) next[sessionId] = text.trim();
+  else delete next[sessionId];
+  write(KEYS.COMMENTS, next);
+  return next;
+}
+
 // ── Weight ───────────────────────────────────────────────────────────────────
 export const getWeight = () => read(KEYS.WEIGHT, { entries: [], goalWeight: 85 });
 export const setWeight = (data) => write(KEYS.WEIGHT, data);
@@ -66,6 +79,7 @@ export function exportAll() {
   return {
     plan: getPlan(),
     completed: getCompleted(),
+    comments: getComments(),
     weight: getWeight(),
     exportedAt: new Date().toISOString(),
     version: 2,
@@ -75,6 +89,7 @@ export function exportAll() {
 export function importAll(data) {
   if (data.plan !== undefined) write(KEYS.PLAN, data.plan);
   if (data.completed !== undefined) write(KEYS.COMPLETED, data.completed);
+  if (data.comments !== undefined) write(KEYS.COMMENTS, data.comments);
   if (data.weight !== undefined) write(KEYS.WEIGHT, data.weight);
 }
 
