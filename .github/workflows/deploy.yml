@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/running-weight-tracker-app-reZ1E
+  workflow_dispatch:
 
 permissions:
   contents: read
