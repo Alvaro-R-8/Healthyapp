@@ -36,13 +36,3 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacit
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1a2235; border-radius: 2px; }
 
-/* Sticky header — vendor-prefixed for iOS Safari PWA */
-.screen-header {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  /* Force GPU layer so iOS touch targets stay aligned with visual position */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-}

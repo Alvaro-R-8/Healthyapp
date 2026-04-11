@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { C, mono, sans, display } from '../utils/design.js';
 import { getPlan, setPlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
 import { isPast, isToday, formatDateShort, getMonthLabel, getMonthShort, todayStr } from '../utils/dateUtils.js';
@@ -452,17 +453,21 @@ function WeekCard({ week, completed, onToggle, isOpen, onToggleOpen, onEditSessi
 
   return (
     <div style={{ marginBottom: 10 }}>
-      {detailSession && detailSession.type === 'run' && (
-        <RunModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />
+      {detailSession && detailSession.type === 'run' && createPortal(
+        <RunModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />,
+        document.body
       )}
-      {detailSession && detailSession.type === 'gym' && (
-        <GymModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />
+      {detailSession && detailSession.type === 'gym' && createPortal(
+        <GymModal session={detailSession} completed={!!completed[detailSession.id]} onToggle={() => onToggle(detailSession.id)} onEdit={() => handleEdit(detailSession)} onClose={() => setDetailSession(null)} comment={comments[detailSession.id] || ''} onSaveComment={onSaveComment} />,
+        document.body
       )}
-      {editSession && editSession.type === 'run' && (
-        <EditRunModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />
+      {editSession && editSession.type === 'run' && createPortal(
+        <EditRunModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />,
+        document.body
       )}
-      {editSession && editSession.type === 'gym' && (
-        <EditGymModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />
+      {editSession && editSession.type === 'gym' && createPortal(
+        <EditGymModal session={editSession} onSave={handleSave} onClose={() => setEditSession(null)} />,
+        document.body
       )}
 
       <button onClick={onToggleOpen} style={{ width: '100%', background: hasToday ? '#0e1a2e' : (isOpen ? C.surfaceHigh : C.surface), border: `1px solid ${hasToday ? C.blue : (isOpen ? C.borderHigh : C.border)}`, borderRadius: isOpen ? '14px 14px 0 0' : 14, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
@@ -607,9 +612,9 @@ export default function TrainingScreen({ onBack, onSettings }) {
   const totalKm = currentWeeks.reduce((a, w) => a + (w.totalKm || 0), 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
-      {/* Header */}
-      <div className="screen-header" style={{ padding: '20px 20px 4px', background: C.bg }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
+      {/* Header — plain flex item, never scrolls */}
+      <div style={{ flexShrink: 0, padding: '20px 20px 4px', background: C.bg }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="back" size={16} color={C.textMid} />
@@ -650,29 +655,31 @@ export default function TrainingScreen({ onBack, onSettings }) {
         <div style={{ height: 1, background: C.surface }} />
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '12px 16px 100px' }}>
-        {!plan ? (
-          <EmptyState onImport={() => setShowImport(true)} />
-        ) : (
-          currentWeeks.map(week => (
-            <WeekCard
-              key={week.id}
-              week={week}
-              completed={completed}
-              onToggle={handleToggle}
-              isOpen={openWeekId === week.id}
-              onToggleOpen={() => setOpenWeekId(p => p === week.id ? null : week.id)}
-              onEditSession={handleEditSession}
-              comments={comments}
-              onSaveComment={handleSaveComment}
-            />
-          ))
-        )}
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ padding: '12px 16px 160px' }}>
+          {!plan ? (
+            <EmptyState onImport={() => setShowImport(true)} />
+          ) : (
+            currentWeeks.map(week => (
+              <WeekCard
+                key={week.id}
+                week={week}
+                completed={completed}
+                onToggle={handleToggle}
+                isOpen={openWeekId === week.id}
+                onToggleOpen={() => setOpenWeekId(p => p === week.id ? null : week.id)}
+                onEditSession={handleEditSession}
+                comments={comments}
+                onSaveComment={handleSaveComment}
+              />
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Floating buttons: import + export */}
-      <div style={{ position: 'fixed', bottom: 88, left: 20, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 50 }}>
+      {/* Floating buttons — absolute so they sit above the scroll area but inside the container */}
+      <div style={{ position: 'absolute', bottom: 88, left: 20, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 50 }}>
         <button
           onClick={() => setShowImport(true)}
           style={{ height: 40, background: C.surfaceHigh, border: `1px solid ${C.blue}66`, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', cursor: 'pointer' }}

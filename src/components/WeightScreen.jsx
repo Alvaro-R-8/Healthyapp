@@ -108,9 +108,9 @@ export default function WeightScreen({ onBack, onSettings }) {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
-      {/* Header */}
-      <div className="screen-header" style={{ padding: '20px 20px 12px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
+      {/* Header — plain flex item, never scrolls, no sticky needed */}
+      <div style={{ flexShrink: 0, padding: '20px 20px 12px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Icon name="back" size={16} color={C.textMid} />
@@ -131,6 +131,8 @@ export default function WeightScreen({ onBack, onSettings }) {
         </div>
       </div>
 
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ padding: '16px 16px 100px' }}>
         {/* Stats grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -271,6 +273,8 @@ export default function WeightScreen({ onBack, onSettings }) {
           </div>
         </div>
       )}
+
+      </div>{/* end scroll outer */}
 
       <AiChat mode="weight" context={aiContext} />
     </div>
