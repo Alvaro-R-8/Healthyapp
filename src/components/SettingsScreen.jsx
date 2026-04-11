@@ -194,6 +194,21 @@ export default function SettingsScreen({ onBack }) {
     showToast('API key eliminada');
   };
 
+  const handleForceUpdate = async () => {
+    showToast('Borrando caché...');
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch {}
+    window.location.reload(true);
+  };
+
   const prompt = buildPrompt(promptRestrictions, promptGoal, promptStartDate, promptWeeks);
 
   const copyPrompt = () => {
@@ -203,9 +218,9 @@ export default function SettingsScreen({ onBack }) {
   const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: mono, fontSize: 12, outline: 'none', width: '100%' };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ padding: '20px 20px 16px', position: 'sticky', top: 0, background: C.bg, zIndex: 10, borderBottom: `1px solid ${C.surface}` }}>
+      <div style={{ flexShrink: 0, padding: '20px 20px 16px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <Icon name="back" size={16} color={C.textMid} />
@@ -217,6 +232,7 @@ export default function SettingsScreen({ onBack }) {
         </div>
       </div>
 
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ padding: '20px 16px 60px' }}>
 
         {/* Backup */}
@@ -303,9 +319,15 @@ export default function SettingsScreen({ onBack }) {
           </Section>
         )}
 
+        {/* Version & Update */}
+        <Section title="VERSIÓN Y ACTUALIZACIÓN" accent={C.textMid}>
+          <Row icon="refresh" iconColor={C.blue} label="Forzar actualización" sublabel="Borra la caché y recarga la última versión" onClick={handleForceUpdate} />
+        </Section>
+
         <div style={{ fontSize: 11, color: C.textLow, fontFamily: mono, textAlign: 'center', lineHeight: 1.7, padding: '8px 0' }}>
-          HealthyApp · Datos guardados en tu dispositivo
+          HealthyApp · v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'} · Datos guardados en tu dispositivo
         </div>
+      </div>
       </div>
 
       {/* Import modal */}
