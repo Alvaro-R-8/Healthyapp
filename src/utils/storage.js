@@ -1,84 +1,85 @@
 const KEYS = {
-  START_DATE: 'happ_start_date',
+  PLAN: 'happ_plan',
   COMPLETED: 'happ_completed',
-  WEIGHT_INITIAL: 'happ_weight_initial',
-  WEIGHT_ENTRIES: 'happ_weight_entries',
-}
+  WEIGHT: 'happ_weight',
+  API_KEY: 'happ_api_key',
+};
 
-export function getStartDate() {
-  return localStorage.getItem(KEYS.START_DATE) || null
-}
-
-export function setStartDate(date) {
-  localStorage.setItem(KEYS.START_DATE, date)
-}
-
-export function getCompleted() {
+function read(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(KEYS.COMPLETED) || '[]')
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
   } catch {
-    return []
+    return fallback;
   }
 }
 
-export function toggleCompleted(id) {
-  const completed = getCompleted()
-  const idx = completed.indexOf(id)
-  if (idx >= 0) {
-    completed.splice(idx, 1)
-  } else {
-    completed.push(id)
-  }
-  localStorage.setItem(KEYS.COMPLETED, JSON.stringify(completed))
-  return completed
-}
-
-export function isCompleted(id) {
-  return getCompleted().includes(id)
-}
-
-export function getInitialWeight() {
-  const v = localStorage.getItem(KEYS.WEIGHT_INITIAL)
-  return v ? parseFloat(v) : null
-}
-
-export function setInitialWeight(w) {
-  localStorage.setItem(KEYS.WEIGHT_INITIAL, String(w))
-}
-
-export function getWeightEntries() {
+function write(key, value) {
   try {
-    return JSON.parse(localStorage.getItem(KEYS.WEIGHT_ENTRIES) || '[]')
-  } catch {
-    return []
-  }
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
 }
 
-export function addWeightEntry(entry) {
-  const entries = getWeightEntries()
-  const existing = entries.findIndex(e => e.date === entry.date && e.official === entry.official)
-  if (existing >= 0) {
-    entries[existing] = entry
+// ── Plan ─────────────────────────────────────────────────────────────────────
+export const getPlan = () => read(KEYS.PLAN, null);
+export const setPlan = (plan) => write(KEYS.PLAN, plan);
+export const clearPlan = () => { try { localStorage.removeItem(KEYS.PLAN); } catch {} };
+
+export function updateSessionInPlan(plan, sessionId, updates) {
+  return {
+    ...plan,
+    weeks: plan.weeks.map(week => ({
+      ...week,
+      sessions: week.sessions.map(s =>
+        s.id === sessionId ? { ...s, ...updates } : s
+      ),
+    })),
+  };
+}
+
+// ── Completed ────────────────────────────────────────────────────────────────
+export const getCompleted = () => read(KEYS.COMPLETED, {});
+
+export function toggleCompleted(sessionId) {
+  const completed = getCompleted();
+  const next = { ...completed };
+  if (next[sessionId]) {
+    delete next[sessionId];
   } else {
-    entries.push(entry)
+    next[sessionId] = true;
   }
-  entries.sort((a, b) => a.date.localeCompare(b.date))
-  localStorage.setItem(KEYS.WEIGHT_ENTRIES, JSON.stringify(entries))
-  return entries
+  write(KEYS.COMPLETED, next);
+  return next;
 }
 
-export function deleteWeightEntry(date, official) {
-  const entries = getWeightEntries().filter(e => !(e.date === date && e.official === official))
-  localStorage.setItem(KEYS.WEIGHT_ENTRIES, JSON.stringify(entries))
-  return entries
+// ── Weight ───────────────────────────────────────────────────────────────────
+export const getWeight = () => read(KEYS.WEIGHT, { entries: [], goalWeight: 85 });
+export const setWeight = (data) => write(KEYS.WEIGHT, data);
+
+// ── API Key ──────────────────────────────────────────────────────────────────
+export const getApiKey = () => { try { return localStorage.getItem(KEYS.API_KEY) || ''; } catch { return ''; } };
+export const setApiKey = (key) => { try { localStorage.setItem(KEYS.API_KEY, key); } catch {} };
+export const clearApiKey = () => { try { localStorage.removeItem(KEYS.API_KEY); } catch {} };
+
+// ── Backup / Restore ─────────────────────────────────────────────────────────
+export function exportAll() {
+  return {
+    plan: getPlan(),
+    completed: getCompleted(),
+    weight: getWeight(),
+    exportedAt: new Date().toISOString(),
+    version: 2,
+  };
 }
 
-export function updateWeightEntry(date, official, newWeight) {
-  const entries = getWeightEntries()
-  const idx = entries.findIndex(e => e.date === date && e.official === official)
-  if (idx >= 0) {
-    entries[idx].weight = newWeight
-    localStorage.setItem(KEYS.WEIGHT_ENTRIES, JSON.stringify(entries))
-  }
-  return entries
+export function importAll(data) {
+  if (data.plan !== undefined) write(KEYS.PLAN, data.plan);
+  if (data.completed !== undefined) write(KEYS.COMPLETED, data.completed);
+  if (data.weight !== undefined) write(KEYS.WEIGHT, data.weight);
+}
+
+export function clearAll() {
+  Object.values(KEYS).forEach(k => {
+    try { localStorage.removeItem(k); } catch {}
+  });
 }
