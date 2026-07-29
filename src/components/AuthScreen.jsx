@@ -4,36 +4,25 @@ import { supabase, supabaseConfigured } from '../utils/supabaseClient.js';
 import Icon from './Icon.jsx';
 
 export default function AuthScreen() {
-  const [step, setStep] = useState('email'); // 'email' | 'code'
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', color: C.text, fontFamily: mono, fontSize: 14, outline: 'none', width: '100%' };
-
-  const sendCode = async () => {
+  const handleSend = async () => {
     if (!email.trim()) return;
     setLoading(true);
     setError('');
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { shouldCreateUser: true },
+      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL, shouldCreateUser: true },
     });
     setLoading(false);
     if (error) setError(error.message);
-    else setStep('code');
+    else setSent(true);
   };
 
-  const verifyCode = async () => {
-    if (!code.trim()) return;
-    setLoading(true);
-    setError('');
-    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setLoading(false);
-    if (error) setError('Código incorrecto o caducado. Pide uno nuevo.');
-    // on success the session updates automatically via onAuthStateChange in App.jsx
-  };
+  const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', color: C.text, fontFamily: mono, fontSize: 14, outline: 'none', width: '100%' };
 
   if (!supabaseConfigured) {
     return (
@@ -57,56 +46,33 @@ export default function AuthScreen() {
         <div style={{ fontSize: 10, color: C.blue, letterSpacing: '0.2em', fontFamily: mono, marginBottom: 8 }}>HEALTHYAPP</div>
         <div style={{ fontSize: 28, fontWeight: 800, fontFamily: display, lineHeight: 1.1, marginBottom: 10 }}>Inicia sesión</div>
 
-        {step === 'code' ? (
-          <>
-            <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, marginBottom: 20 }}>
-              Te enviamos un código de 6 dígitos a <span style={{ color: C.text }}>{email}</span>. Escríbelo aquí, sin salir de la app.
+        {sent ? (
+          <div style={{ background: C.surfaceHigh, border: `1px solid ${C.green}44`, borderRadius: 14, padding: 18 }}>
+            <div style={{ fontSize: 14, color: C.text, fontWeight: 600, marginBottom: 6 }}>✓ Enlace enviado</div>
+            <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
+              Revisa tu correo (<span style={{ color: C.text }}>{email}</span>) y toca el enlace. Si se abre en Safari, no pasa nada: vuelve a esta app desde el icono de la pantalla de inicio y la sesión se detectará sola.
             </div>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              placeholder="123456"
-              value={code}
-              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              onKeyDown={e => e.key === 'Enter' && verifyCode()}
-              style={{ ...inp, marginBottom: 10, textAlign: 'center', fontSize: 22, letterSpacing: '0.3em' }}
-            />
-            {error && <div style={{ fontSize: 12, color: C.red, marginBottom: 10, fontFamily: mono }}>{error}</div>}
-            <button
-              onClick={verifyCode}
-              disabled={loading || code.length !== 6}
-              style={{ width: '100%', padding: 13, background: code.length === 6 ? C.blue : C.surfaceHigh, color: code.length === 6 ? '#fff' : C.textLow, border: 'none', borderRadius: 10, fontFamily: display, fontSize: 15, fontWeight: 700, cursor: code.length === 6 ? 'pointer' : 'default', marginBottom: 12 }}
-            >
-              {loading ? 'Comprobando...' : 'Confirmar código'}
-            </button>
-            <button
-              onClick={() => { setStep('email'); setCode(''); setError(''); }}
-              style={{ width: '100%', padding: 0, background: 'none', border: 'none', color: C.textLow, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}
-            >
-              ← Usar otro email / reenviar código
-            </button>
-          </>
+          </div>
         ) : (
           <>
             <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, marginBottom: 20 }}>
-              Te enviamos un código a tu email, sin contraseñas. Tus datos se guardan en la nube y estarán disponibles en todos tus dispositivos.
+              Te enviamos un enlace mágico a tu email, sin contraseñas. Tus datos se guardan en la nube y estarán disponibles en todos tus dispositivos.
             </div>
             <input
               type="email"
               placeholder="tu@email.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendCode()}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
               style={{ ...inp, marginBottom: 10 }}
             />
             {error && <div style={{ fontSize: 12, color: C.red, marginBottom: 10, fontFamily: mono }}>{error}</div>}
             <button
-              onClick={sendCode}
+              onClick={handleSend}
               disabled={loading || !email.trim()}
               style={{ width: '100%', padding: 13, background: email.trim() ? C.blue : C.surfaceHigh, color: email.trim() ? '#fff' : C.textLow, border: 'none', borderRadius: 10, fontFamily: display, fontSize: 15, fontWeight: 700, cursor: email.trim() ? 'pointer' : 'default' }}
             >
-              {loading ? 'Enviando...' : 'Enviar código'}
+              {loading ? 'Enviando...' : 'Enviar enlace mágico'}
             </button>
           </>
         )}

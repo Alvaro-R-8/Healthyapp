@@ -37,6 +37,28 @@ export default function App() {
     initStore(session.user.id).then(() => setStoreReady(true));
   }, [session?.user?.id]);
 
+  // iOS opens the magic link in Safari, not in the installed home-screen app —
+  // re-check for a session whenever the app regains focus so it picks up a
+  // login that just happened in the other browsing context.
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    const recheck = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session) setSession(data.session);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', recheck);
+    window.addEventListener('focus', recheck);
+    window.addEventListener('pageshow', recheck);
+    return () => {
+      document.removeEventListener('visibilitychange', recheck);
+      window.removeEventListener('focus', recheck);
+      window.removeEventListener('pageshow', recheck);
+    };
+  }, []);
+
   if (!supabaseConfigured || session === null) return <AuthScreen />;
   if (session === undefined || !storeReady) return <LoadingScreen />;
 
