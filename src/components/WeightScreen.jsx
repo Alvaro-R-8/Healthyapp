@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Dot } from 'recharts';
 import { C, mono, sans, display } from '../utils/design.js';
-import { getWeight, setWeight } from '../utils/storage.js';
+import { getWeight, addWeightEntry, deleteWeightEntry, setGoalWeight, replaceWeightEntries } from '../utils/storage.js';
 import { formatDateShort, formatDateMini } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
@@ -40,7 +40,6 @@ export default function WeightScreen({ onBack, onSettings }) {
   const [importText, setImportText] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const persist = (newData) => { setData(newData); setWeight(newData); };
 
   const sorted = useMemo(() =>
     [...(data.entries || [])].sort((a, b) => a.date.localeCompare(b.date)),
@@ -76,23 +75,19 @@ export default function WeightScreen({ onBack, onSettings }) {
   const addEntry = () => {
     const w = parseFloat(weight);
     if (!weight || !date || isNaN(w) || w < 30 || w > 300) return;
-    const newEntries = [
-      ...(data.entries || []).filter(e => !(e.date === date && e.type === type)),
-      { id: Date.now(), date, weight: w, type, note: note.trim() },
-    ];
-    persist({ ...data, entries: newEntries });
+    setData(addWeightEntry({ date, weight: w, type, note }));
     setWeightInput('');
     setNote('');
     setDate(new Date().toISOString().split('T')[0]);
   };
 
   const deleteEntry = (id) => {
-    persist({ ...data, entries: data.entries.filter(e => e.id !== id) });
+    setData(deleteWeightEntry(id));
   };
 
   const handleGoalBlur = () => {
     const v = parseFloat(goalInput);
-    if (!isNaN(v) && v > 20 && v < 300) persist({ ...data, goalWeight: v });
+    if (!isNaN(v) && v > 20 && v < 300) setData(setGoalWeight(v));
     else setGoalInput(String(data.goalWeight));
   };
 
@@ -267,7 +262,7 @@ export default function WeightScreen({ onBack, onSettings }) {
             <div style={{ fontSize: 12, color: C.textMid, fontFamily: mono, marginBottom: 12, lineHeight: 1.6 }}>Pega el JSON exportado. Reemplazará los datos actuales.</div>
             <textarea placeholder='Pega aquí el JSON de pesos...' value={importText} onChange={e => setImportText(e.target.value)} rows={8} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, color: C.text, fontFamily: mono, fontSize: 11, outline: 'none', resize: 'none' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={() => { try { const p = JSON.parse(importText); if (Array.isArray(p)) { const nd = { ...data, entries: p }; persist(nd); setModal(null); setImportText(''); } else alert('Formato inválido.'); } catch { alert('JSON inválido.'); } }} style={{ flex: 1, padding: 11, background: C.lime, color: '#0e0e11', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cargar</button>
+              <button onClick={() => { try { const p = JSON.parse(importText); if (Array.isArray(p)) { setData(replaceWeightEntries(p)); setModal(null); setImportText(''); } else alert('Formato inválido.'); } catch { alert('JSON inválido.'); } }} style={{ flex: 1, padding: 11, background: C.lime, color: '#0e0e11', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cargar</button>
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: 11, background: C.surfaceHigh, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
             </div>
           </div>

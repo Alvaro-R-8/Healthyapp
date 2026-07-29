@@ -132,7 +132,7 @@ function Row({ icon, iconColor, label, sublabel, right, onClick, danger }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function SettingsScreen({ onBack }) {
+export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
   const [apiKey, setApiKeyState] = useState(() => getApiKey());
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiInput, setShowApiInput] = useState(false);
@@ -234,6 +234,14 @@ export default function SettingsScreen({ onBack }) {
 
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ padding: '20px 16px 60px' }}>
+
+        {/* Account */}
+        {userEmail && (
+          <Section title="CUENTA" accent={C.green}>
+            <Row icon="key" iconColor={C.green} label={userEmail} sublabel="Sesión iniciada · datos en la nube" />
+            <Row icon="trash" iconColor={C.red} label="Cerrar sesión" onClick={onSignOut} danger />
+          </Section>
+        )}
 
         {/* Backup */}
         <Section title="BACKUP Y RESTAURACIÓN" accent={C.blue}>
