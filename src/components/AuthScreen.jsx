@@ -44,6 +44,20 @@ export default function AuthScreen() {
     // on success App.jsx's onAuthStateChange picks up the new session automatically
   };
 
+  const handleForceUpdate = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch {}
+    window.location.reload();
+  };
+
   const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', color: C.text, fontFamily: mono, fontSize: 14, outline: 'none', width: '100%' };
 
   if (!supabaseConfigured) {
@@ -122,6 +136,14 @@ export default function AuthScreen() {
             </button>
           </>
         )}
+
+        <button
+          onClick={handleForceUpdate}
+          style={{ width: '100%', marginTop: 28, padding: 0, background: 'none', border: 'none', color: C.textLow, fontFamily: mono, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          <Icon name="refresh" size={12} color={C.textLow} />
+          Forzar actualización de la app
+        </button>
       </div>
     </div>
   );

@@ -10,5 +10,7 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <path d="M144 150 L144 362 M144 256 L232 256 M232 150 L232 362 M286 362 L326 150 M326 150 L366 362 M300 288 L352 288" stroke="url(#stroke)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M150 140 L150 300 M150 220 L230 220 M230 140 L230 300 M280 300 L316 140 M316 140 L352 300 M292 246 L340 246" stroke="url(#stroke)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M108 396 L158 396 L186 356 L214 424 L244 348 L270 396 L400 396" stroke="url(#stroke)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55"/>
+  <circle cx="400" cy="396" r="11" fill="#c8f060"/>
 </svg>
