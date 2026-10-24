@@ -65,24 +65,29 @@ const PLAN_SCHEMA = `{
   ]
 }`;
 
-function buildPrompt(restrictions, goal, startDate, weeks) {
-  return `Genera un plan de entrenamiento en formato JSON estricto para importar en mi app fitness.
+function buildPrompt({ goal, level, days, restrictions, startDate, weeks }) {
+  const start = startDate || new Date().toISOString().split('T')[0];
+  const nWeeks = weeks || 8;
+  return `Eres un entrenador personal experto. Diseña un plan de entrenamiento personalizado y devuélvelo en formato JSON estricto para importarlo en mi app fitness.
+
+OBJETIVO PRINCIPAL (todo el plan debe estar orientado a conseguirlo):
+${goal || 'mejorar mi forma física general'}
 
 DATOS PERSONALES:
-- Restricciones físicas: ${restrictions || 'ninguna'}
-- Objetivo: ${goal || 'completar una carrera'}
-- Fecha de inicio del plan: ${startDate || new Date().toISOString().split('T')[0]}
-- Número de semanas: ${weeks || 8}
+- Nivel / forma actual: ${level || 'no especificado'}
+- Días disponibles para entrenar por semana: ${days || 'los que consideres adecuados'}
+- Restricciones físicas o lesiones: ${restrictions || 'ninguna'}
+- Fecha de inicio del plan: ${start}
+- Número de semanas: ${nWeeks}
 
-ESTRUCTURA SEMANAL:
-- Lunes: gym (piernas y core)
-- Martes: gym mañana (tren superior) + carrera tarde
-- Miércoles: gym (cuerpo entero)
-- Jueves: gym mañana (cuerpo entero) + carrera tarde
-- Viernes: gym (tren superior + core)
-- Sábado: carrera larga
-- Domingo: descanso
-- Cada 4ª semana: semana de recuperación (volumen -30%)
+CÓMO DISEÑAR EL PLAN:
+- Elige tú la estructura semanal, el reparto entre fuerza (gym) y carrera, y los días de descanso en función del objetivo, mi nivel y los días disponibles.
+- Progresa la carga de forma gradual y realista hacia el objetivo, e incluye semanas de recuperación (volumen reducido) cuando tenga sentido.
+- Si el objetivo tiene una fecha (por ejemplo una carrera), planifica la puesta a punto para llegar en el mejor momento.
+- Respeta siempre las restricciones físicas indicadas.
+- Usa en la "description" del plan un resumen de 1-2 frases de cómo el plan lleva al objetivo.
+
+TIPOS DE SESIÓN ("type"): "gym", "run" o "rest". Cada día de cada semana debe tener una sesión (los días sin entreno son "rest").
 
 COLORES A USAR:
 - gym: "#3B82F6"
@@ -94,8 +99,8 @@ COLORES A USAR:
 El JSON debe seguir EXACTAMENTE este formato (no modifiques la estructura):
 ${PLAN_SCHEMA}
 
-Genera el JSON completo para las ${weeks || 8} semanas empezando el ${startDate || new Date().toISOString().split('T')[0]}.
-Incluye todos los ejercicios detallados. No trunces el output.`;
+Genera el JSON completo para las ${nWeeks} semanas empezando el ${start}.
+Incluye todos los ejercicios detallados. Devuelve solo el JSON, sin texto adicional. No trunces el output.`;
 }
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
@@ -141,6 +146,8 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [promptRestrictions, setPromptRestrictions] = useState('');
   const [promptGoal, setPromptGoal] = useState('');
+  const [promptLevel, setPromptLevel] = useState('');
+  const [promptDays, setPromptDays] = useState('');
   const [promptStartDate, setPromptStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [promptWeeks, setPromptWeeks] = useState('8');
   const [promptCopied, setPromptCopied] = useState(false);
@@ -209,7 +216,7 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
     window.location.reload(true);
   };
 
-  const prompt = buildPrompt(promptRestrictions, promptGoal, promptStartDate, promptWeeks);
+  const prompt = buildPrompt({ goal: promptGoal, level: promptLevel, days: promptDays, restrictions: promptRestrictions, startDate: promptStartDate, weeks: promptWeeks });
 
   const copyPrompt = () => {
     navigator.clipboard?.writeText(prompt).then(() => { setPromptCopied(true); showToast('✓ Prompt copiado'); setTimeout(() => setPromptCopied(false), 2000); }).catch(() => showToast('No se pudo copiar'));
@@ -281,12 +288,16 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
               <div style={{ padding: '16px 18px', borderTop: `1px solid ${C.border}` }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>RESTRICCIONES FÍSICAS</div>
-                    <input style={inp} value={promptRestrictions} onChange={e => setPromptRestrictions(e.target.value)} placeholder="ej: L5-S1: sin carga axial" />
+                    <div style={{ fontSize: 10, color: C.lime, fontFamily: mono, marginBottom: 5 }}>OBJETIVO</div>
+                    <textarea style={{ ...inp, resize: 'none', fontFamily: sans }} rows={3} value={promptGoal} onChange={e => setPromptGoal(e.target.value)} placeholder="ej: Correr una media maratón en abril de 2027 por debajo de 2h y perder 5 kg" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>OBJETIVO</div>
-                    <input style={inp} value={promptGoal} onChange={e => setPromptGoal(e.target.value)} placeholder="ej: Media maratón Abril 2027" />
+                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>NIVEL ACTUAL</div>
+                    <input style={inp} value={promptLevel} onChange={e => setPromptLevel(e.target.value)} placeholder="ej: corro 5 km en 30 min, gym 2 días/semana" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>RESTRICCIONES FÍSICAS</div>
+                    <input style={inp} value={promptRestrictions} onChange={e => setPromptRestrictions(e.target.value)} placeholder="ej: L5-S1: sin carga axial" />
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div style={{ flex: 1 }}>
@@ -296,6 +307,10 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>SEMANAS</div>
                       <input type="number" style={inp} value={promptWeeks} onChange={e => setPromptWeeks(e.target.value)} min="1" max="52" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>DÍAS/SEM</div>
+                      <input type="number" style={inp} value={promptDays} onChange={e => setPromptDays(e.target.value)} min="1" max="7" placeholder="—" />
                     </div>
                   </div>
                 </div>
