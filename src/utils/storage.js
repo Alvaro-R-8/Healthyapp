@@ -10,7 +10,7 @@ const cache = {
   plan: null,
   completed: {},
   comments: {},
-  weight: { entries: [], goalWeight: 85 },
+  weight: { entries: [], goalWeight: null },
 };
 
 const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -38,7 +38,7 @@ export async function initStore(userId) {
 
   cache.weight = {
     entries: (weightRes.data || []).map(e => ({ id: e.id, date: e.date, weight: Number(e.weight), type: e.type, note: e.note || '' })),
-    goalWeight: goalRes.data?.goal_weight != null ? Number(goalRes.data.goal_weight) : 85,
+    goalWeight: goalRes.data?.goal_weight != null ? Number(goalRes.data.goal_weight) : null,
   };
 }
 
@@ -66,6 +66,17 @@ export function clearPlan() {
   cache.plan = null;
   if (!cache.userId) return;
   supabase.from('plans').delete().eq('user_id', cache.userId).then(() => {});
+}
+
+// Loading a new plan starts from scratch: session ids like "w1-mon" are reused
+// across plans, so old completions and comments would otherwise reappear.
+export function replacePlan(plan) {
+  setPlan(plan);
+  cache.completed = {};
+  cache.comments = {};
+  if (!cache.userId) return;
+  supabase.from('completed_sessions').delete().eq('user_id', cache.userId).then(() => {});
+  supabase.from('session_comments').delete().eq('user_id', cache.userId).then(() => {});
 }
 
 export function updateSessionInPlan(plan, sessionId, updates) {
@@ -149,7 +160,11 @@ export function deleteWeightEntry(id) {
 export function setGoalWeight(value) {
   cache.weight = { ...cache.weight, goalWeight: value };
   if (cache.userId) {
-    supabase.from('weight_goals').upsert({ user_id: cache.userId, goal_weight: value }, { onConflict: 'user_id' }).then(() => {});
+    if (value == null) {
+      supabase.from('weight_goals').delete().eq('user_id', cache.userId).then(() => {});
+    } else {
+      supabase.from('weight_goals').upsert({ user_id: cache.userId, goal_weight: value }, { onConflict: 'user_id' }).then(() => {});
+    }
   }
   return cache.weight;
 }
@@ -218,7 +233,7 @@ export function importAll(data) {
   }
   if (data.weight !== undefined) {
     replaceWeightEntries(data.weight.entries || []);
-    setGoalWeight(data.weight.goalWeight != null ? Number(data.weight.goalWeight) : 85);
+    setGoalWeight(data.weight.goalWeight != null ? Number(data.weight.goalWeight) : null);
   }
 }
 
@@ -226,7 +241,7 @@ export function clearAll() {
   cache.plan = null;
   cache.completed = {};
   cache.comments = {};
-  cache.weight = { entries: [], goalWeight: 85 };
+  cache.weight = { entries: [], goalWeight: null };
 
   if (cache.userId) {
     const uid = cache.userId;

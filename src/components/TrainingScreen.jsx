@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { C, mono, sans, display } from '../utils/design.js';
-import { getPlan, setPlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
+import { getPlan, setPlan, replacePlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
 import { isPast, isToday, formatDateShort, getMonthLabel, getMonthShort, todayStr } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
@@ -565,9 +565,10 @@ export default function TrainingScreen({ onBack, onSettings }) {
   };
 
   const handleImport = (newPlan) => {
-    setPlan(newPlan);
+    replacePlan(newPlan);
     setPlanState(newPlan);
     setCompleted({});
+    setComments({});
     setShowImport(false);
   };
 

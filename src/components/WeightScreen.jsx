@@ -35,7 +35,7 @@ export default function WeightScreen({ onBack, onSettings }) {
   const [weight, setWeightInput] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
-  const [goalInput, setGoalInput] = useState(() => String(getWeight().goalWeight || 85));
+  const [goalInput, setGoalInput] = useState(() => getWeight().goalWeight != null ? String(getWeight().goalWeight) : '');
   const [modal, setModal] = useState(null);
   const [importText, setImportText] = useState('');
   const [copied, setCopied] = useState(false);
@@ -54,7 +54,8 @@ export default function WeightScreen({ onBack, onSettings }) {
   const latest = sorted[sorted.length - 1];
   const first = sorted[0];
   const totalLost = first && latest ? (first.weight - latest.weight) : 0;
-  const remaining = latest ? (latest.weight - data.goalWeight) : null;
+  const hasGoal = data.goalWeight != null;
+  const remaining = latest && hasGoal ? (latest.weight - data.goalWeight) : null;
 
   const weeklyRate = useMemo(() => {
     const officials = sorted.filter(e => e.type === 'official');
@@ -69,8 +70,9 @@ export default function WeightScreen({ onBack, onSettings }) {
     ? Math.ceil(remaining / parseFloat(weeklyRate)) : null;
 
   const yValues = sorted.map(e => e.weight);
-  const yMin = yValues.length ? Math.floor(Math.min(...yValues, data.goalWeight) - 1) : data.goalWeight - 5;
-  const yMax = yValues.length ? Math.ceil(Math.max(...yValues) + 1) : data.goalWeight + 10;
+  const goalValues = hasGoal ? [data.goalWeight] : [];
+  const yMin = yValues.length ? Math.floor(Math.min(...yValues, ...goalValues) - 1) : (hasGoal ? data.goalWeight - 5 : 'auto');
+  const yMax = yValues.length ? Math.ceil(Math.max(...yValues) + 1) : (hasGoal ? data.goalWeight + 10 : 'auto');
 
   const addEntry = () => {
     const w = parseFloat(weight);
@@ -86,9 +88,10 @@ export default function WeightScreen({ onBack, onSettings }) {
   };
 
   const handleGoalBlur = () => {
+    if (!goalInput.trim()) { setData(setGoalWeight(null)); return; }
     const v = parseFloat(goalInput);
     if (!isNaN(v) && v > 20 && v < 300) setData(setGoalWeight(v));
-    else setGoalInput(String(data.goalWeight));
+    else setGoalInput(hasGoal ? String(data.goalWeight) : '');
   };
 
   const aiContext = { goalWeight: data.goalWeight, currentWeight: latest?.weight, weeklyRate, recentEntries: sorted.slice(-5) };
@@ -97,7 +100,7 @@ export default function WeightScreen({ onBack, onSettings }) {
 
   const stats = [
     { label: 'Peso actual', value: latest ? `${latest.weight} kg` : '—', sub: latest ? formatDateShort(latest.date) : 'sin datos', accent: false },
-    { label: 'Por perder', value: remaining !== null ? `${Math.max(0, remaining).toFixed(1)} kg` : '—', sub: `hasta ${data.goalWeight} kg`, accent: remaining !== null && remaining < 10 },
+    { label: 'Por perder', value: remaining !== null ? `${Math.max(0, remaining).toFixed(1)} kg` : '—', sub: hasGoal ? `hasta ${data.goalWeight} kg` : 'define tu meta', accent: remaining !== null && remaining < 10 },
     { label: 'Ritmo semanal', value: weeklyRate ? `-${weeklyRate} kg` : '—', sub: 'últimas 2 oficiales', accent: !!weeklyRate },
     { label: 'Semanas restantes', value: weeksToGoal ? `~${weeksToGoal}` : '—', sub: 'a ritmo actual', accent: false },
   ];
@@ -147,6 +150,7 @@ export default function WeightScreen({ onBack, onSettings }) {
           <input
             type="number"
             value={goalInput}
+            placeholder="—"
             onChange={e => setGoalInput(e.target.value)}
             onBlur={handleGoalBlur}
             onKeyDown={e => e.key === 'Enter' && e.target.blur()}
@@ -176,7 +180,7 @@ export default function WeightScreen({ onBack, onSettings }) {
                 <XAxis dataKey="displayDate" tick={{ fill: C.textLow, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[yMin, yMax]} tick={{ fill: C.textLow, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<WeightTooltip />} />
-                <ReferenceLine y={data.goalWeight} stroke={C.lime} strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `Meta ${data.goalWeight}`, fill: C.lime, fontSize: 9, fontFamily: 'DM Mono' }} />
+                {hasGoal && <ReferenceLine y={data.goalWeight} stroke={C.lime} strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `Meta ${data.goalWeight}`, fill: C.lime, fontSize: 9, fontFamily: 'DM Mono' }} />}
                 <Area type="monotone" dataKey="weight" stroke={C.lime} strokeWidth={2} fill="url(#wgrad)" dot={<WeightDot />} activeDot={{ r: 6, fill: C.lime, stroke: C.bg, strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>

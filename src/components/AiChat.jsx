@@ -24,7 +24,7 @@ export default function AiChat({ mode, context }) {
 
   const systemPrompt = mode === 'training'
     ? `Eres un entrenador personal experto. Contexto del plan actual: ${JSON.stringify(context)}. Responde en español de tú, tono cercano y directo. Máximo 3 párrafos.`
-    : `Eres un coach de nutrición y control de peso. Contexto: meta=${context?.goalWeight}kg, actual=${context?.currentWeight}kg, ritmo=${context?.weeklyRate}kg/semana. Responde en español de tú, basado en evidencia. Máximo 3 párrafos.`;
+    : `Eres un coach de nutrición y control de peso. Contexto: meta=${context?.goalWeight != null ? context.goalWeight + "kg" : "sin definir"}, actual=${context?.currentWeight}kg, ritmo=${context?.weeklyRate}kg/semana. Responde en español de tú, basado en evidencia. Máximo 3 párrafos.`;
 
   const openChat = () => {
     if (!getApiKey()) {
