@@ -11,6 +11,7 @@ export default function Icon({ name, size = 16, color = 'currentColor' }) {
     stretch: <svg {...p}><circle cx="16" cy="5" r="1.6" fill={color}/><path d="M5 20l5-.5l1-2"/><path d="M18 20v-5h-5.5l2.5-6.5l-5.5 1l1.5 2"/></svg>,
     // No Tabler pilates icon: a glute bridge on a mat, drawn to match.
     pilates: <svg {...p}><circle cx="4.5" cy="15.5" r="1.6" fill={color}/><path d="M7 17l6-6l5 3l1 4"/><path d="M5 18.5h4"/><path d="M2 21h20"/></svg>,
+    history: <svg {...p}><path d="M12 8v4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></svg>,
     activity: <svg {...p}><path d="M3 12h4l3 8l4-16l3 8h4"/></svg>,
     long: <svg {...p}><path d="M3 17l5-6 4 3 4-6 5 5"/><path d="M3 21h18"/></svg>,
     gym: <svg {...p}><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M22 12h-1"/></svg>,

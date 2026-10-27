@@ -145,23 +145,151 @@ export function clearPlan() {
   write('plan', () => supabase.from('plans').delete().eq('user_id', cache.userId));
 }
 
+// ── Plan history ─────────────────────────────────────────────────────────────
+// Plans are archived (with their progress and notes) before being replaced or
+// ended, so nothing is lost and they can be reused later.
+
+// The plan_history table comes from a migration the owner runs by hand; until
+// then archiving is skipped with a warning instead of blocking imports.
+const isMissingTable = (error) => ['PGRST205', '42P01'].includes(error?.code) || /plan_history/.test(error?.message || '');
+const MISSING_HISTORY_MSG = 'Falta crear la tabla de planes guardados en Supabase (supabase/migrations). El plan anterior no se ha archivado.';
+
+const planDates = (plan) => (plan?.weeks || []).flatMap(w => w.sessions || []).map(s => s.date).filter(Boolean).sort();
+
+function historyRow(plan, completed, comments) {
+  const sessions = (plan.weeks || []).flatMap(w => w.sessions || []).filter(s => s.type !== 'rest');
+  const ids = new Set(sessions.map(s => s.id));
+  const pick = (obj) => Object.fromEntries(Object.entries(obj).filter(([k]) => ids.has(k)));
+  const dates = planDates(plan);
+  const done = pick(completed);
+  return {
+    id: newId(),
+    user_id: cache.userId,
+    name: plan.name || null,
+    start_date: dates[0] || plan.startDate || null,
+    end_date: dates[dates.length - 1] || null,
+    weeks: plan.weeks?.length || 0,
+    total_sessions: sessions.length,
+    done_sessions: Object.keys(done).length,
+    data: plan,
+    completed: done,
+    comments: pick(comments),
+  };
+}
+
+// Returns { error, skipped }: a missing table is reported once and skipped.
+async function archive(row) {
+  const res = await supabase.from('plan_history').upsert(row, { onConflict: 'id' });
+  if (res.error && isMissingTable(res.error)) {
+    console.warn('[sync] plan_history missing:', res.error);
+    notify(MISSING_HISTORY_MSG);
+    return { error: null, skipped: true };
+  }
+  return { error: res.error || null };
+}
+
+async function clearProgress(uid) {
+  const [completed, comments] = await Promise.all([
+    supabase.from('completed_sessions').delete().eq('user_id', uid),
+    supabase.from('session_comments').delete().eq('user_id', uid),
+  ]);
+  return { error: completed.error || comments.error };
+}
+
 // Loading a new plan starts from scratch: session ids like "w1-mon" are reused
 // across plans, so old completions and comments would otherwise reappear.
-// The old progress is only cleared once the new plan is saved.
+// The current plan is archived first; old progress is only cleared once both
+// the archive and the new plan are saved.
 export function replacePlan(plan) {
+  const previous = cache.plan ? historyRow(cache.plan, cache.completed, cache.comments) : null;
   cache.plan = plan;
   cache.completed = {};
   cache.comments = {};
   const uid = cache.userId;
   write('plan', async () => {
+    if (previous) {
+      const archived = await archive(previous);
+      if (archived.error) return archived;
+    }
     const saved = await supabase.from('plans').upsert(planRow(plan));
     if (saved.error) return saved;
-    const [completed, comments] = await Promise.all([
-      supabase.from('completed_sessions').delete().eq('user_id', uid),
-      supabase.from('session_comments').delete().eq('user_id', uid),
-    ]);
-    return { error: completed.error || comments.error };
+    return clearProgress(uid);
   });
+}
+
+// "Terminar plan": archive it and leave no active plan. Nothing is deleted
+// unless the archive was saved (here a missing table blocks the deletion).
+export function endCurrentPlan() {
+  if (!cache.plan) return;
+  const row = historyRow(cache.plan, cache.completed, cache.comments);
+  cache.plan = null;
+  cache.completed = {};
+  cache.comments = {};
+  const uid = cache.userId;
+  write('plan', async () => {
+    const res = await supabase.from('plan_history').upsert(row, { onConflict: 'id' });
+    if (res.error) {
+      if (isMissingTable(res.error)) notify(MISSING_HISTORY_MSG);
+      return res;
+    }
+    const removed = await supabase.from('plans').delete().eq('user_id', uid);
+    if (removed.error) return removed;
+    return clearProgress(uid);
+  });
+}
+
+export async function listPlanHistory() {
+  if (!cache.userId) return { data: [], error: null };
+  const res = await supabase.from('plan_history')
+    .select('id, name, start_date, end_date, weeks, total_sessions, done_sessions, archived_at')
+    .eq('user_id', cache.userId)
+    .order('archived_at', { ascending: false });
+  if (res.error) console.error('[sync] history list:', res.error);
+  return { data: res.data || [], error: res.error || null, missingTable: isMissingTable(res.error) };
+}
+
+export async function getPlanHistoryItem(id) {
+  const res = await supabase.from('plan_history')
+    .select('id, name, data, completed, comments, start_date, end_date')
+    .eq('user_id', cache.userId).eq('id', id).maybeSingle();
+  if (res.error) console.error('[sync] history item:', res.error);
+  return { data: res.data || null, error: res.error || null };
+}
+
+export function deletePlanHistory(id) {
+  write(`history:${id}`, () => supabase.from('plan_history').delete().eq('user_id', cache.userId).eq('id', id));
+}
+
+const addDays = (dateStr, n) => {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+// First day on or after `fromDate` with the same weekday as the plan's first
+// session, so Mondays stay Mondays when a plan is reused.
+export function alignedStart(plan, fromDate) {
+  const first = planDates(plan)[0];
+  if (!first || !fromDate) return fromDate;
+  const want = new Date(first + 'T12:00:00').getDay();
+  const have = new Date(fromDate + 'T12:00:00').getDay();
+  return addDays(fromDate, (want - have + 7) % 7);
+}
+
+// Copy of `plan` with every date moved so it starts on `alignedStart(...)`.
+export function shiftPlan(plan, fromDate) {
+  const first = planDates(plan)[0];
+  if (!first) return plan;
+  const start = alignedStart(plan, fromDate);
+  const delta = Math.round((new Date(start + 'T12:00:00') - new Date(first + 'T12:00:00')) / 86400000);
+  return {
+    ...plan,
+    startDate: start,
+    weeks: plan.weeks.map(w => ({
+      ...w,
+      sessions: (w.sessions || []).map(s => (s.date ? { ...s, date: addDays(s.date.slice(0, 10), delta) } : s)),
+    })),
+  };
 }
 
 export function updateSessionInPlan(plan, sessionId, updates) {

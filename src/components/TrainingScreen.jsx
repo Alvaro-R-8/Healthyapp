@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON } from '../utils/design.js';
-import { getPlan, setPlan, replacePlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
+import { getPlan, setPlan, replacePlan, endCurrentPlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
 import { isPast, isToday, formatDateShort, todayStr, groupByDay, dayKey } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
+import PlansSheet from './PlansSheet.jsx';
 import { Screen, ScreenHeader, GlassCard, Label, Button, IconButton, Chip, Sheet, Toast, Field, inputStyle } from './ui.jsx';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -320,7 +321,7 @@ function ImportSheet({ onImport, onClose }) {
       footer={<Button onClick={tryImport} disabled={!text.trim()}>Cargar plan</Button>}
     >
       <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.55, marginBottom: 12 }}>
-        Genera el plan en Claude con el prompt de Ajustes, pega aquí el JSON y cárgalo. Sustituye al plan actual.
+        Genera el plan en Claude con el prompt de Ajustes, pega aquí el JSON y cárgalo. Tu plan actual se guardará en «Mis planes» con su progreso.
       </div>
       <textarea
         aria-label="JSON del plan"
@@ -389,7 +390,7 @@ function DayStrip({ days, selectedDate, completed, onSelect }) {
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
-function EmptyState({ onImport }) {
+function EmptyState({ onImport, onPlans }) {
   return (
     <GlassCard radius={30} padding={26} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, marginTop: 20 }}>
       <div style={{ width: 72, height: 72, borderRadius: '50%', background: C.primary + '26', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -400,6 +401,7 @@ function EmptyState({ onImport }) {
         Importa un plan generado por Claude para empezar a entrenar. El prompt lo tienes en <strong style={{ color: C.text }}>Ajustes</strong>.
       </div>
       <Button icon="download" onClick={onImport} style={{ marginTop: 6 }}>Importar plan</Button>
+      <Button variant="glass" icon="history" onClick={onPlans}>Reutilizar un plan guardado</Button>
     </GlassCard>
   );
 }
@@ -410,6 +412,7 @@ export default function TrainingScreen() {
   const [completed, setCompleted] = useState(() => getCompleted());
   const [comments, setComments] = useState(() => getComments());
   const [showImport, setShowImport] = useState(false);
+  const [showPlans, setShowPlans] = useState(false);
   const [weekIdx, setWeekIdx] = useState(() => findCurrentWeekIdx(getPlan()));
   const [selectedDate, setSelectedDate] = useState(() => defaultDate(getPlan()?.weeks?.[findCurrentWeekIdx(getPlan())]));
   const [editSession, setEditSession] = useState(null);
@@ -448,9 +451,19 @@ export default function TrainingScreen() {
     setCompleted({});
     setComments({});
     setShowImport(false);
+    setShowPlans(false);
     const idx = findCurrentWeekIdx(newPlan);
     setWeekIdx(idx);
     setSelectedDate(defaultDate(newPlan.weeks[idx]));
+  };
+
+  const handleEndPlan = () => {
+    endCurrentPlan();
+    setPlanState(null);
+    setCompleted({});
+    setComments({});
+    setShowPlans(false);
+    showToast('✓ Plan guardado en «Mis planes»');
   };
 
   const handleSaveEdit = (updates) => {
@@ -495,13 +508,14 @@ export default function TrainingScreen() {
         title="Entrenos"
         subtitle={plan ? `${plan.name} · semana ${weekIdx + 1} de ${plan.weeks.length}` : 'Sin plan activo'}
         right={<>
+          <IconButton icon="history" label="Mis planes" onClick={() => setShowPlans(true)} />
           {plan && <IconButton icon="upload" label="Exportar plan" onClick={handleExportPlan} />}
           <IconButton icon="download" label="Importar plan" onClick={() => setShowImport(true)} />
         </>}
       />
 
       {!plan ? (
-        <EmptyState onImport={() => setShowImport(true)} />
+        <EmptyState onImport={() => setShowImport(true)} onPlans={() => setShowPlans(true)} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div ref={chipsRef} className="no-scrollbar" style={{ display: 'flex', gap: 8, overflowX: 'auto', margin: '0 -20px', padding: '2px 20px' }}>
@@ -601,6 +615,7 @@ export default function TrainingScreen() {
       {editSession && (editSession.type === 'gym' || editSession.exercises?.length) && <EditGymSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
       {editSession && editSession.type !== 'gym' && !editSession.exercises?.length && <EditRunSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
       {showImport && <ImportSheet onImport={handleImport} onClose={() => setShowImport(false)} />}
+      {showPlans && <PlansSheet hasActivePlan={!!plan} onClose={() => setShowPlans(false)} onReuse={handleImport} onEnd={handleEndPlan} />}
       {toast && <Toast>{toast}</Toast>}
 
       <AiChat mode="training" context={{ planName: plan?.name, week: week?.label }} />

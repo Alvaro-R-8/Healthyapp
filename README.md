@@ -10,7 +10,13 @@ cp .env.example .env   # y rellena VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
 npm run dev
 ```
 
-`.env` no se sube al repositorio. El esquema de la base de datos está en `supabase/schema.sql`.
+`.env` no se sube al repositorio.
+
+## Base de datos
+
+- `supabase/schema.sql`: esquema inicial (se ejecuta una vez en un proyecto nuevo).
+- `supabase/migrations/`: cambios posteriores. Cada archivo se ejecuta una vez, en orden, en Supabase → SQL Editor → New query → pegar → Run. Se pueden volver a ejecutar sin romper nada.
+  - `20261027_plan_history.sql`: tabla de planes guardados («Mis planes»).
 
 ## Despliegue
 
