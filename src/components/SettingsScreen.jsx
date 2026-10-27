@@ -246,6 +246,16 @@ export default function SettingsScreen({ userEmail, onSignOut, themePref, onThem
                 <input type="number" style={inp} value={promptDays} onChange={e => setPromptDays(e.target.value)} min="1" max="7" placeholder="—" />
               </Field>
             </div>
+            {/* Long plans tend to come back truncated from the model. */}
+            {Number(promptWeeks) > 16 ? (
+              <div role="status" style={{ fontSize: 13, color: C.secondary, lineHeight: 1.5, marginTop: -4 }}>
+                Más de 16 semanas: el plan puede salir cortado. Mejor pide bloques de hasta 16 semanas y, al terminar uno, genera el siguiente.
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.5, marginTop: -4 }}>
+                Recomendado: hasta 16 semanas por plan.
+              </div>
+            )}
 
             <div style={{ background: C.inset, borderRadius: 18, padding: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.textMid, marginBottom: 6 }}>Vista previa del prompt</div>
