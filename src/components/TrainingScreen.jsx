@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { C, display, sessionKind, sessionColor, KIND_LABEL } from '../utils/design.js';
+import { C, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON } from '../utils/design.js';
 import { getPlan, setPlan, replacePlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
-import { isPast, isToday, formatDateShort, todayStr, groupByDay } from '../utils/dateUtils.js';
+import { isPast, isToday, formatDateShort, todayStr, groupByDay, dayKey } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
 import { Screen, ScreenHeader, GlassCard, Label, Button, IconButton, Chip, Sheet, Toast, Field, inputStyle } from './ui.jsx';
@@ -11,8 +11,6 @@ const effortColor = (effort) => ({
   'Muy fácil': C.success, 'Fácil': C.success, 'Moderado': C.secondary,
   'Exigente': C.primaryText, 'Intenso': C.dangerText,
 }[effort] || C.textMid);
-
-const KIND_ICON = { gym: 'gym', easy: 'run', tempo: 'pace', long: 'long', rest: 'rest' };
 
 const dayNum = (date) => date ? new Date(date + 'T12:00:00').getDate() : '';
 
@@ -35,7 +33,7 @@ function defaultDate(week) {
 const plural = (n) => `${n} entreno${n === 1 ? '' : 's'}`;
 
 // ── Session detail (inline card) ─────────────────────────────────────────────
-function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComment }) {
+function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComment, onCollapse }) {
   const [commentText, setCommentText] = useState(comment || '');
   const [commentSaved, setCommentSaved] = useState(false);
   useEffect(() => { setCommentText(comment || ''); setCommentSaved(false); }, [session.id]);
@@ -59,7 +57,7 @@ function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComm
     );
   }
 
-  const stats = session.type === 'run'
+  const stats = isDistanceSession(session)
     ? [
         session.distance && { label: 'Distancia', value: session.distance, color },
         session.pace && { label: 'Ritmo', value: session.pace, color: C.text },
@@ -75,7 +73,14 @@ function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComm
           <div style={{ fontFamily: display, fontSize: 24, fontWeight: 800, lineHeight: 1.2, marginTop: 4 }}>{session.title}</div>
           {session.subtitle && <div style={{ fontSize: 15, color: C.textMid, marginTop: 4 }}>{session.subtitle}</div>}
         </div>
-        {!past && <IconButton icon="edit" label="Editar sesión" onClick={onEdit} size={40} />}
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {!past && <IconButton icon="edit" label="Editar sesión" onClick={onEdit} size={40} />}
+          {onCollapse && (
+            <button onClick={onCollapse} aria-label="Plegar" aria-expanded="true" style={{ width: 40, height: 40, borderRadius: '50%', border: `1px solid ${C.glassBorder}`, background: C.glass, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, transform: 'rotate(180deg)' }}>
+              <Icon name="chevronDown" size={20} color={C.textMid} />
+            </button>
+          )}
+        </div>
       </div>
 
       {stats.length > 0 && (
@@ -156,6 +161,38 @@ function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComm
   );
 }
 
+// Folded session inside a day with several workouts; tapping it unfolds the card.
+function SessionRow({ session, completed, onExpand, onToggle }) {
+  const kind = sessionKind(session);
+  const color = sessionColor(session);
+  const summary = sessionSummary(session);
+  return (
+    <GlassCard radius={26} padding="8px 8px 8px 12px" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button onClick={onExpand} aria-expanded="false" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '6px 0', textAlign: 'left', color: C.text }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: color + '2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name={KIND_ICON[kind]} size={24} color={color} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Label color={color}>{KIND_LABEL[kind]}</Label>
+          <div style={{ fontFamily: display, fontSize: 18, fontWeight: 800, lineHeight: 1.25, marginTop: 2, textDecoration: completed ? 'line-through' : 'none', opacity: completed ? 0.65 : 1 }}>{session.title}</div>
+          {summary && <div style={{ fontSize: 14, color: C.textMid, marginTop: 1 }}>{summary}</div>}
+        </div>
+        <Icon name="chevronDown" size={20} color={C.textMid} />
+      </button>
+      <button
+        onClick={onToggle}
+        aria-label={completed ? `Desmarcar ${session.title}` : `Marcar ${session.title} como hecho`}
+        aria-pressed={completed}
+        style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+      >
+        <span style={{ width: 32, height: 32, borderRadius: '50%', boxSizing: 'border-box', border: completed ? 'none' : `2px solid ${C.glassBorder}`, background: completed ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {completed && <Icon name="check" size={16} color={C.mode === 'light' ? '#FFFFFF' : '#0B2E2A'} />}
+        </span>
+      </button>
+    </GlassCard>
+  );
+}
+
 // ── Edit sheets ───────────────────────────────────────────────────────────────
 function SmallButton({ children, onClick, color }) {
   return (
@@ -180,7 +217,7 @@ function EditRunSheet({ session, onSave, onClose }) {
   const inp = inputStyle();
 
   return (
-    <Sheet title="Editar carrera" onClose={onClose} footer={<Button onClick={() => onSave({ title, distance, pace, effort, notes, blocks })}>Guardar cambios</Button>}>
+    <Sheet title={sessionKind(session) === 'swim' ? 'Editar natación' : 'Editar carrera'} onClose={onClose} footer={<Button onClick={() => onSave({ title, distance, pace, effort, notes, blocks })}>Guardar cambios</Button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label="Título"><input style={inp} value={title} onChange={e => setTitle(e.target.value)} /></Field>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -376,12 +413,17 @@ export default function TrainingScreen() {
   const [weekIdx, setWeekIdx] = useState(() => findCurrentWeekIdx(getPlan()));
   const [selectedDate, setSelectedDate] = useState(() => defaultDate(getPlan()?.weeks?.[findCurrentWeekIdx(getPlan())]));
   const [editSession, setEditSession] = useState(null);
+  const [expanded, setExpanded] = useState({});
   const [toast, setToast] = useState('');
   const chipsRef = useRef(null);
 
   const week = plan?.weeks?.[weekIdx] || null;
   const days = groupByDay(week?.sessions);
   const selectedDay = days.find(d => d.date === selectedDate) || null;
+
+  // Folded state is per day: switching days folds everything again.
+  useEffect(() => { setExpanded({}); }, [selectedDate, weekIdx]);
+  const toggleExpanded = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
 
   // Keep the selected week chip in view.
   useEffect(() => {
@@ -444,7 +486,8 @@ export default function TrainingScreen() {
 
   const active = week ? week.sessions.filter(s => s.type !== 'rest') : [];
   const doneCount = active.filter(s => completed[s.id]).length;
-  const others = week ? week.sessions.filter(s => s.type !== 'rest' && s.date !== selectedDate) : [];
+  const others = week ? week.sessions.filter(s => s.type !== 'rest' && dayKey(s) !== selectedDate) : [];
+  const multi = selectedDay?.training.length > 1;
 
   return (
     <Screen>
@@ -482,7 +525,7 @@ export default function TrainingScreen() {
 
               <DayStrip days={days} selectedDate={selectedDate} completed={completed} onSelect={setSelectedDate} />
 
-              {selectedDay && selectedDay.training.length > 1 && (
+              {multi && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
                   <span style={{ fontFamily: display, fontSize: 18, fontWeight: 800 }}>
                     {isToday(selectedDay.date) ? 'Hoy' : `${selectedDay.dayName} ${dayNum(selectedDay.date)}`}
@@ -490,11 +533,21 @@ export default function TrainingScreen() {
                   <span style={{ fontSize: 13, fontWeight: 800, color: C.onPrimary, background: C.primary, borderRadius: 999, padding: '4px 10px' }}>
                     {plural(selectedDay.training.length)}
                   </span>
+                  <span style={{ fontSize: 13, color: C.textMid, marginLeft: 'auto' }}>Toca para ver el detalle</span>
                 </div>
               )}
 
-              {selectedDay && (selectedDay.training.length ? selectedDay.training : selectedDay.sessions.slice(0, 1)).map(s => (
+              {selectedDay && (selectedDay.training.length ? selectedDay.training : selectedDay.sessions.slice(0, 1)).map(s => multi && !expanded[s.id] ? (
+                <SessionRow
+                  key={s.id}
+                  session={s}
+                  completed={!!completed[s.id]}
+                  onExpand={() => toggleExpanded(s.id)}
+                  onToggle={() => handleToggle(s.id)}
+                />
+              ) : (
                 <SessionCard
+                  onCollapse={multi ? () => toggleExpanded(s.id) : undefined}
                   key={s.id}
                   session={s}
                   completed={!!completed[s.id]}
@@ -513,7 +566,7 @@ export default function TrainingScreen() {
                     const done = !!completed[s.id];
                     return (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 999, background: C.glass, border: `1px solid ${C.glassBorder}`, padding: '0 8px 0 10px', minHeight: 62 }}>
-                        <button onClick={() => { setSelectedDate(s.date); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '8px 0', textAlign: 'left', color: C.text }}>
+                        <button onClick={() => { setSelectedDate(dayKey(s)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '8px 0', textAlign: 'left', color: C.text }}>
                           <div style={{ width: 42, height: 42, borderRadius: '50%', background: color + '2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Icon name={KIND_ICON[sessionKind(s)]} size={20} color={color} />
                           </div>
@@ -544,7 +597,7 @@ export default function TrainingScreen() {
         </div>
       )}
 
-      {editSession?.type === 'run' && <EditRunSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
+      {editSession && editSession.type !== 'gym' && editSession.type !== 'rest' && <EditRunSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
       {editSession?.type === 'gym' && <EditGymSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
       {showImport && <ImportSheet onImport={handleImport} onClose={() => setShowImport(false)} />}
       {toast && <Toast>{toast}</Toast>}

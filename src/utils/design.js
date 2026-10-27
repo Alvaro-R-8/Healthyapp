@@ -126,25 +126,44 @@ const LEGACY_RUN = {
   '#5eead4': 'easy', '#ffb547': 'tempo', '#ff5e7e': 'long',
 };
 
+const SWIM_RE = /nataci|nadar|swim|piscina|crol/;
+
 export function sessionKind(session) {
   if (!session || session.type === 'rest') return 'rest';
   if (session.type === 'gym') return 'gym';
+  const t = `${session.title || ''} ${session.subtitle || ''}`.toLowerCase();
+  if (session.type === 'swim' || SWIM_RE.test(t)) return 'swim';
   const legacy = LEGACY_RUN[(session.color || '').toLowerCase()];
   if (legacy) return legacy;
-  const t = `${session.title || ''} ${session.subtitle || ''}`.toLowerCase();
   if (/larg/.test(t)) return 'long';
   if (/tempo|interval|series|fartlek|ritmo/.test(t)) return 'tempo';
   return 'easy';
 }
 
-export const KIND_LABEL = { gym: 'Gym', easy: 'Carrera fácil', tempo: 'Tempo / series', long: 'Carrera larga', rest: 'Descanso' };
+export const KIND_LABEL = { gym: 'Gym', easy: 'Carrera fácil', tempo: 'Tempo / series', long: 'Carrera larga', swim: 'Natación', rest: 'Descanso' };
+
+// Icon per discipline: every kind of run shares the runner, the label and
+// color tell easy/tempo/long apart.
+export const KIND_ICON = { gym: 'gym', easy: 'run', tempo: 'run', long: 'run', swim: 'swim', rest: 'rest' };
 
 export function sessionColor(session) {
   switch (sessionKind(session)) {
     case 'gym': return C.accent;
     case 'tempo': return C.mode === 'light' ? '#9A5B00' : '#FFB547';
     case 'long': return C.mode === 'light' ? '#C42E55' : '#FF5E7E';
+    case 'swim': return C.mode === 'light' ? '#0369A1' : '#38BDF8';
     case 'rest': return C.textLow;
     default: return C.success;
   }
+}
+
+// Sessions measured by distance (runs and swims) show distance/pace stats.
+export const isDistanceSession = (session) => ['easy', 'tempo', 'long', 'swim'].includes(sessionKind(session));
+
+// Short "what is it" line: distance and pace, or duration and exercise count.
+export function sessionSummary(session) {
+  if (!session) return '';
+  if (isDistanceSession(session)) return [session.distance || session.subtitle, session.pace].filter(Boolean).join(' · ');
+  const n = session.exercises?.length;
+  return [session.subtitle, n ? `${n} ejercicio${n === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
 }

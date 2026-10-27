@@ -1,9 +1,11 @@
 export default function Icon({ name, size = 16, color = 'currentColor' }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
   const icons = {
-    run: <svg {...p}><circle cx="13" cy="4" r="1.6"/><path d="M7 21l3-6 3 2 1-5 3 3h3M9 9l3-2 3 2"/></svg>,
+    // Discipline icons (gym, run, swim) follow Tabler's barbell/run/swimming shapes.
+    run: <svg {...p}><circle cx="13" cy="4" r="1.6" fill={color}/><path d="M4 17l5 1l.75-1.5"/><path d="M15 21v-4l-4-3l1-6"/><path d="M7 12v-3l5-1l3 3l3 1"/></svg>,
+    swim: <svg {...p}><circle cx="16" cy="9" r="1.6" fill={color}/><path d="M6 11l4-2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1-.25"/></svg>,
     long: <svg {...p}><path d="M3 17l5-6 4 3 4-6 5 5"/><path d="M3 21h18"/></svg>,
-    gym: <svg {...p}><path d="M6 5v14M18 5v14M3 9h3M18 9h3M3 15h3M18 15h3M6 12h12"/></svg>,
+    gym: <svg {...p}><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M22 12h-1"/></svg>,
     rest: <svg {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>,
     home: <svg {...p}><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>,
     sliders: <svg {...p}><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>,

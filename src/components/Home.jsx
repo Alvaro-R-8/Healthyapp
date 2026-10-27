@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { C, GRADIENT, display, sessionKind, sessionColor, KIND_LABEL } from '../utils/design.js';
+import { C, GRADIENT, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON } from '../utils/design.js';
 import { getPlan, getCompleted, toggleCompleted, getWeight } from '../utils/storage.js';
 import { isToday, todayStr, formatDateShort } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
@@ -41,14 +41,16 @@ function splitDistance(distance) {
 
 function TodayCard({ session, completed, onToggle }) {
   const kind = sessionKind(session);
-  const dist = session.type === 'run' ? splitDistance(session.distance) : null;
-  const meta = session.type === 'run'
+  const dist = isDistanceSession(session) ? splitDistance(session.distance) : null;
+  const meta = dist
     ? [session.pace, session.effort].filter(Boolean).join(' · ')
-    : session.subtitle;
+    : sessionSummary(session);
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 32, padding: 22, background: GRADIENT, color: C.onPrimary, display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div aria-hidden="true" style={{ position: 'absolute', width: 200, height: 200, right: -60, top: -70, borderRadius: '50%', background: 'rgba(255,255,255,0.22)' }} />
-      <div style={{ position: 'relative', fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{KIND_LABEL[kind]}</div>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        <Icon name={KIND_ICON[kind]} size={18} color={C.onPrimary} />{KIND_LABEL[kind]}
+      </div>
       {dist ? (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <div style={{ fontFamily: display, fontSize: 64, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>{dist.value}</div>
@@ -64,7 +66,7 @@ function TodayCard({ session, completed, onToggle }) {
   );
 }
 
-const KIND_ICON = { gym: 'gym', easy: 'run', tempo: 'pace', long: 'long' };
+const SHORT_LABEL = { gym: 'Gym', easy: 'Carrera', tempo: 'Tempo', long: 'Tirada larga', swim: 'Natación' };
 
 // Several workouts today: one gradient card listing each with its own check.
 function MultiTodayCard({ sessions, completed, onToggle, onOpen }) {
@@ -77,16 +79,16 @@ function MultiTodayCard({ sessions, completed, onToggle, onOpen }) {
       {sessions.map(s => {
         const kind = sessionKind(s);
         const done = !!completed[s.id];
-        const meta = s.type === 'run' ? [s.distance, s.pace].filter(Boolean).join(' · ') : s.subtitle;
+        const meta = sessionSummary(s);
         return (
           <div key={s.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, borderRadius: 24, background: 'rgba(42,10,20,0.12)', padding: '6px 6px 6px 10px' }}>
             <button onClick={onOpen} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '6px 0', textAlign: 'left', color: C.onPrimary, opacity: done ? 0.6 : 1 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon name={KIND_ICON[kind] || 'run'} size={21} color={C.onPrimary} />
+                <Icon name={KIND_ICON[kind]} size={22} color={C.onPrimary} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{KIND_LABEL[kind]}</div>
-                <div style={{ fontFamily: display, fontSize: 18, fontWeight: 800, lineHeight: 1.2, textDecoration: done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
+                <div style={{ fontFamily: display, fontSize: 18, fontWeight: 800, lineHeight: 1.2, textDecoration: done ? 'line-through' : 'none' }}>{s.title}</div>
                 {meta && <div style={{ fontSize: 14, fontWeight: 600 }}>{meta}</div>}
               </div>
             </button>
@@ -132,7 +134,7 @@ export default function Home({ onNavigate }) {
   const title = !plan ? 'Hola'
     : todaySessions.length === 0 ? 'Hoy toca descansar'
     : todaySessions.length > 1 ? `Hoy tienes ${todaySessions.length} entrenos`
-    : todaySessions[0].type === 'gym' ? 'Hoy toca gym' : 'Hoy toca correr';
+    : { gym: 'Hoy toca gym', swim: 'Hoy toca nadar' }[sessionKind(todaySessions[0])] || 'Hoy toca correr';
 
   return (
     <Screen>
@@ -143,6 +145,17 @@ export default function Home({ onNavigate }) {
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 14, color: C.textMid }}>{dateLabel}</div>
         <h1 style={{ margin: 0, fontFamily: display, fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em' }}>{title}</h1>
+        {todaySessions.length > 1 && (
+          <div style={{ fontSize: 16, color: C.textMid, marginTop: 6, lineHeight: 1.45 }}>
+            {todaySessions.map((s, i) => (
+              <span key={s.id}>
+                {i > 0 && ' + '}
+                <span style={{ color: sessionColor(s), fontWeight: 700 }}>{SHORT_LABEL[sessionKind(s)]}</span>
+                {(s.distance || s.subtitle) && ` ${s.distance || s.subtitle}`}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
