@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/running-weight-tracker-app-reZ1E
+      - main
   workflow_dispatch:
 
 permissions:
