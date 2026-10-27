@@ -6,9 +6,23 @@ import { GlassCard, Button, LogoMark, inputStyle } from './ui.jsx';
 
 const LINK_RE = /https:\/\/[^\s"'<>]+\/auth\/v1\/verify\?[^\s"'<>]+/i;
 
+// iOS often reloads the installed app while the user is in Mail copying the
+// link, so the "waiting for the link" step is kept in localStorage.
+const PENDING_KEY = 'kora_login_pending';
+const PENDING_MAX_AGE = 60 * 60 * 1000;
+
+function readPending() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null');
+    return p && Date.now() - p.sentAt < PENDING_MAX_AGE ? p : null;
+  } catch { return null; }
+}
+const savePending = (email) => { try { localStorage.setItem(PENDING_KEY, JSON.stringify({ email, sentAt: Date.now() })); } catch {} };
+const clearPending = () => { try { localStorage.removeItem(PENDING_KEY); } catch {} };
+
 export default function AuthScreen() {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [email, setEmail] = useState(() => readPending()?.email || '');
+  const [sent, setSent] = useState(() => !!readPending());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pastedLink, setPastedLink] = useState('');
@@ -25,12 +39,12 @@ export default function AuthScreen() {
     });
     setLoading(false);
     if (error) setError(error.message);
-    else setSent(true);
+    else { savePending(email.trim()); setSent(true); }
   };
 
-  const handleVerifyLink = async () => {
+  const handleVerifyLink = async (text = pastedLink) => {
     setLinkError('');
-    const match = pastedLink.match(LINK_RE);
+    const match = text.match(LINK_RE);
     if (!match) { setLinkError(`No hemos encontrado un enlace de inicio de sesión de ${APP_NAME} en ese texto.`); return; }
     let url;
     try { url = new URL(match[0]); } catch { setLinkError('El enlace no es válido.'); return; }
@@ -42,7 +56,17 @@ export default function AuthScreen() {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type });
     setVerifying(false);
     if (error) setLinkError('El enlace ha caducado o ya se usó. Pide uno nuevo.');
+    else clearPending();
     // on success App.jsx's onAuthStateChange picks up the new session automatically
+  };
+
+  const handlePasteFromClipboard = async () => {
+    setLinkError('');
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch {}
+    if (!text) { setLinkError('No se pudo leer el portapapeles. Pega el enlace a mano en el campo.'); return; }
+    setPastedLink(text);
+    handleVerifyLink(text);
   };
 
   const handleForceUpdate = async () => {
@@ -93,8 +117,12 @@ export default function AuthScreen() {
                 <div style={{ fontFamily: display, fontSize: 20, fontWeight: 800 }}>Email enviado</div>
               </div>
               <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.6 }}>
-                Revisa tu correo (<span style={{ color: C.text }}>{email}</span>). <strong style={{ color: C.text }}>No toques el enlace</strong>: mantén el dedo pulsado sobre él, elige <strong style={{ color: C.text }}>«Copiar»</strong> y pégalo aquí abajo. Así no se abre Safari y te quedas dentro de la app.
+                Abre tu correo{email ? <> (<span style={{ color: C.text }}>{email}</span>)</> : ''}. <strong style={{ color: C.text }}>No toques el enlace</strong>: mantén el dedo pulsado sobre él y elige <strong style={{ color: C.text }}>«Copiar»</strong>. Luego vuelve aquí y pulsa el botón de abajo. La app recuerda que estás esperando el enlace.
               </div>
+              <Button icon="copy" onClick={handlePasteFromClipboard} disabled={verifying}>
+                {verifying ? 'Comprobando...' : 'Pegar enlace y entrar'}
+              </Button>
+              <div style={{ fontSize: 13, color: C.textMid, textAlign: 'center' }}>o pégalo a mano:</div>
               <textarea
                 aria-label="Enlace del email"
                 placeholder="https://...supabase.co/auth/v1/verify?token=..."
@@ -104,11 +132,11 @@ export default function AuthScreen() {
                 style={{ ...inputStyle(), fontSize: 13, resize: 'none' }}
               />
               {linkError && <div style={{ fontSize: 14, color: C.dangerText }}>{linkError}</div>}
-              <Button onClick={handleVerifyLink} disabled={verifying || !pastedLink.trim()}>
-                {verifying ? 'Comprobando...' : 'Entrar con este enlace'}
+              <Button variant="glass" onClick={() => handleVerifyLink()} disabled={verifying || !pastedLink.trim()}>
+                Entrar con este enlace
               </Button>
               <button
-                onClick={() => { setSent(false); setPastedLink(''); setLinkError(''); }}
+                onClick={() => { clearPending(); setSent(false); setPastedLink(''); setLinkError(''); }}
                 style={{ padding: 8, background: 'none', border: 'none', color: C.textMid, fontSize: 14, fontWeight: 600 }}
               >
                 ← Usar otro email o reenviar
@@ -133,6 +161,12 @@ export default function AuthScreen() {
               <Button onClick={handleSend} disabled={loading || !email.trim()}>
                 {loading ? 'Enviando...' : 'Enviar enlace mágico'}
               </Button>
+              <button
+                onClick={() => { setSent(true); setError(''); }}
+                style={{ padding: 8, background: 'none', border: 'none', color: C.textMid, fontSize: 14, fontWeight: 600 }}
+              >
+                Ya tengo un enlace →
+              </button>
             </>
           )}
         </GlassCard>
