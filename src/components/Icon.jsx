@@ -4,6 +4,14 @@ export default function Icon({ name, size = 16, color = 'currentColor' }) {
     // Discipline icons (gym, run, swim) follow Tabler's barbell/run/swimming shapes.
     run: <svg {...p}><circle cx="13" cy="4" r="1.6" fill={color}/><path d="M4 17l5 1l.75-1.5"/><path d="M15 21v-4l-4-3l1-6"/><path d="M7 12v-3l5-1l3 3l3 1"/></svg>,
     swim: <svg {...p}><circle cx="16" cy="9" r="1.6" fill={color}/><path d="M6 11l4-2l3.5 3l-1.5 2"/><path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2-1a2.4 2.4 0 0 1 2-1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1-.25"/></svg>,
+    bike: <svg {...p}><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/><path d="M12 19v-4l-3-3l5-4l2 3h3"/><circle cx="17" cy="5" r="1.4" fill={color}/></svg>,
+    walk: <svg {...p}><circle cx="13" cy="4" r="1.6" fill={color}/><path d="M7 21l3-4"/><path d="M16 21l-2-4l-3-3l1-6"/><path d="M6 12l2-3l4-1l3 3l3 1"/></svg>,
+    treadmill: <svg {...p}><circle cx="11" cy="3.4" r="1.4" fill={color}/><path d="M3 14l4 1l.5-.5"/><path d="M12 18v-3l-3-2.9l.75-5.1"/><path d="M6 10v-2l4-1l2.5 2.5l2.5.5"/><path d="M21 22a1 1 0 0 0-1-1h-16a1 1 0 0 0-1 1"/><path d="M18 21l1-11l2-1"/></svg>,
+    yoga: <svg {...p}><circle cx="12" cy="4" r="1.6" fill={color}/><path d="M4 20h4l1.5-3"/><path d="M17 20l-1-5h-5l1-7"/><path d="M4 10l4-1l4-1l4 1.5l4 1.5"/></svg>,
+    stretch: <svg {...p}><circle cx="16" cy="5" r="1.6" fill={color}/><path d="M5 20l5-.5l1-2"/><path d="M18 20v-5h-5.5l2.5-6.5l-5.5 1l1.5 2"/></svg>,
+    // No Tabler pilates icon: a glute bridge on a mat, drawn to match.
+    pilates: <svg {...p}><circle cx="4.5" cy="15.5" r="1.6" fill={color}/><path d="M7 17l6-6l5 3l1 4"/><path d="M5 18.5h4"/><path d="M2 21h20"/></svg>,
+    activity: <svg {...p}><path d="M3 12h4l3 8l4-16l3 8h4"/></svg>,
     long: <svg {...p}><path d="M3 17l5-6 4 3 4-6 5 5"/><path d="M3 21h18"/></svg>,
     gym: <svg {...p}><path d="M2 12h1"/><path d="M6 8h-2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M9 12h6"/><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-10a1 1 0 0 0-1-1h-1a1 1 0 0 0-1 1z"/><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M22 12h-1"/></svg>,
     rest: <svg {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>,

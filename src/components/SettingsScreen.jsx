@@ -87,7 +87,7 @@ CÓMO DISEÑAR EL PLAN:
 - Respeta siempre las restricciones físicas indicadas.
 - Usa en la "description" del plan un resumen de 1-2 frases de cómo el plan lleva al objetivo.
 
-TIPOS DE SESIÓN ("type"): "gym", "run", "swim" (natación, solo si encaja con el objetivo o lo pido) o "rest". Cada día de cada semana debe tener al menos una sesión (los días sin entreno son "rest"). Si un día tiene dos entrenos, crea dos sesiones con la misma fecha e ids distintos.
+TIPOS DE SESIÓN ("type"): "gym", "run", "rest" y, solo si encajan con el objetivo o los pido, "swim" (natación), "bike" (ciclismo), "walk" (andar), "treadmill" (andar en cinta), "pilates", "yoga", "stretch" (estiramientos/movilidad) u "other" (cualquier otra actividad). En las sesiones de distancia (run, swim, bike, walk, treadmill) rellena "distance" y "pace". Cada día de cada semana debe tener al menos una sesión (los días sin entreno son "rest"). Si un día tiene dos entrenos, crea dos sesiones con la misma fecha e ids distintos.
 
 COLORES A USAR:
 - gym: "#A78BFA"
@@ -95,6 +95,10 @@ COLORES A USAR:
 - tempo/intervalos: "#FFB547"
 - carrera larga: "#FF5E7E"
 - natación: "#38BDF8"
+- ciclismo: "#A3E635"
+- andar / andar en cinta: "#86EFAC"
+- pilates / yoga / estiramientos: "#F0ABFC"
+- otros: "#CBD5E1"
 - descanso: "#9C8590"
 
 El JSON debe seguir EXACTAMENTE este formato (no modifiques la estructura):

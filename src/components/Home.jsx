@@ -66,7 +66,15 @@ function TodayCard({ session, completed, onToggle }) {
   );
 }
 
-const SHORT_LABEL = { gym: 'Gym', easy: 'Carrera', tempo: 'Tempo', long: 'Tirada larga', swim: 'Natación' };
+const SHORT_LABEL = {
+  gym: 'Gym', easy: 'Carrera', tempo: 'Tempo', long: 'Tirada larga', swim: 'Natación', bike: 'Bici',
+  walk: 'Andar', treadmill: 'Cinta', pilates: 'Pilates', yoga: 'Yoga', stretch: 'Estiramientos', other: 'Entreno',
+};
+
+const TODAY_TITLE = {
+  gym: 'Hoy toca gym', swim: 'Hoy toca nadar', bike: 'Hoy toca bici', walk: 'Hoy toca andar', treadmill: 'Hoy toca cinta',
+  pilates: 'Hoy toca pilates', yoga: 'Hoy toca yoga', stretch: 'Hoy toca estirar', other: 'Hoy toca entrenar',
+};
 
 // Several workouts today: one gradient card listing each with its own check.
 function MultiTodayCard({ sessions, completed, onToggle, onOpen }) {
@@ -134,7 +142,7 @@ export default function Home({ onNavigate }) {
   const title = !plan ? 'Hola'
     : todaySessions.length === 0 ? 'Hoy toca descansar'
     : todaySessions.length > 1 ? `Hoy tienes ${todaySessions.length} entrenos`
-    : { gym: 'Hoy toca gym', swim: 'Hoy toca nadar' }[sessionKind(todaySessions[0])] || 'Hoy toca correr';
+    : TODAY_TITLE[sessionKind(todaySessions[0])] || 'Hoy toca correr';
 
   return (
     <Screen>

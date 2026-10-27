@@ -126,13 +126,34 @@ const LEGACY_RUN = {
   '#5eead4': 'easy', '#ffb547': 'tempo', '#ff5e7e': 'long',
 };
 
-const SWIM_RE = /nataci|nadar|swim|piscina|crol/;
+// Explicit `type` values the plan may use, mapped to a kind.
+const TYPE_KIND = {
+  gym: 'gym', swim: 'swim', bike: 'bike', cycling: 'bike', bici: 'bike',
+  walk: 'walk', walking: 'walk', treadmill: 'treadmill',
+  pilates: 'pilates', yoga: 'yoga', stretch: 'stretch', stretching: 'stretch',
+  other: 'other',
+};
+
+// Fallback when the type is missing or generic: guess from the text.
+const TEXT_KIND = [
+  [/nataci|nadar|swim|piscina|crol/, 'swim'],
+  [/bici|ciclismo|spinning|bike|cycling/, 'bike'],
+  [/(cinta|treadmill).*(andar|caminar|walk)|(andar|caminar|walk).*(cinta|treadmill)/, 'treadmill'],
+  [/\bandar\b|caminar|caminata|paseo|walk/, 'walk'],
+  [/pilates/, 'pilates'],
+  [/yoga/, 'yoga'],
+  [/estiramient|stretch|movilidad/, 'stretch'],
+];
 
 export function sessionKind(session) {
   if (!session || session.type === 'rest') return 'rest';
-  if (session.type === 'gym') return 'gym';
+  const type = String(session.type || '').toLowerCase();
+  if (TYPE_KIND[type]) return TYPE_KIND[type];
   const t = `${session.title || ''} ${session.subtitle || ''}`.toLowerCase();
-  if (session.type === 'swim' || SWIM_RE.test(t)) return 'swim';
+  if (type !== 'run') {
+    const guess = TEXT_KIND.find(([re]) => re.test(t));
+    return guess ? guess[1] : 'other';
+  }
   const legacy = LEGACY_RUN[(session.color || '').toLowerCase()];
   if (legacy) return legacy;
   if (/larg/.test(t)) return 'long';
@@ -140,25 +161,44 @@ export function sessionKind(session) {
   return 'easy';
 }
 
-export const KIND_LABEL = { gym: 'Gym', easy: 'Carrera fácil', tempo: 'Tempo / series', long: 'Carrera larga', swim: 'Natación', rest: 'Descanso' };
+export const KIND_LABEL = {
+  gym: 'Gym', easy: 'Carrera fácil', tempo: 'Tempo / series', long: 'Carrera larga', swim: 'Natación',
+  bike: 'Ciclismo', walk: 'Andar', treadmill: 'Andar en cinta', pilates: 'Pilates', yoga: 'Yoga',
+  stretch: 'Estiramientos', other: 'Otros', rest: 'Descanso',
+};
 
 // Icon per discipline: every kind of run shares the runner, the label and
 // color tell easy/tempo/long apart.
-export const KIND_ICON = { gym: 'gym', easy: 'run', tempo: 'run', long: 'run', swim: 'swim', rest: 'rest' };
+export const KIND_ICON = {
+  gym: 'gym', easy: 'run', tempo: 'run', long: 'run', swim: 'swim', bike: 'bike', walk: 'walk',
+  treadmill: 'treadmill', pilates: 'pilates', yoga: 'yoga', stretch: 'stretch', other: 'activity', rest: 'rest',
+};
+
+// [dark, light] per kind; families share a color and differ by icon/label.
+const KIND_COLOR = {
+  tempo: ['#FFB547', '#9A5B00'],
+  long: ['#FF5E7E', '#C42E55'],
+  swim: ['#38BDF8', '#0369A1'],
+  bike: ['#A3E635', '#4D7C0F'],
+  walk: ['#86EFAC', '#15803D'],
+  treadmill: ['#86EFAC', '#15803D'],
+  pilates: ['#F0ABFC', '#A21CAF'],
+  yoga: ['#F0ABFC', '#A21CAF'],
+  stretch: ['#F0ABFC', '#A21CAF'],
+  other: ['#CBD5E1', '#475569'],
+};
 
 export function sessionColor(session) {
-  switch (sessionKind(session)) {
-    case 'gym': return C.accent;
-    case 'tempo': return C.mode === 'light' ? '#9A5B00' : '#FFB547';
-    case 'long': return C.mode === 'light' ? '#C42E55' : '#FF5E7E';
-    case 'swim': return C.mode === 'light' ? '#0369A1' : '#38BDF8';
-    case 'rest': return C.textLow;
-    default: return C.success;
-  }
+  const kind = sessionKind(session);
+  if (kind === 'gym') return C.accent;
+  if (kind === 'rest') return C.textLow;
+  if (kind === 'easy') return C.success;
+  return KIND_COLOR[kind][C.mode === 'light' ? 1 : 0];
 }
 
 // Sessions measured by distance (runs and swims) show distance/pace stats.
-export const isDistanceSession = (session) => ['easy', 'tempo', 'long', 'swim'].includes(sessionKind(session));
+const DISTANCE_KINDS = ['easy', 'tempo', 'long', 'swim', 'bike', 'walk', 'treadmill'];
+export const isDistanceSession = (session) => DISTANCE_KINDS.includes(sessionKind(session));
 
 // Short "what is it" line: distance and pace, or duration and exercise count.
 export function sessionSummary(session) {

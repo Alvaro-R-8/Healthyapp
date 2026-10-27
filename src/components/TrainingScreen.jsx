@@ -217,7 +217,7 @@ function EditRunSheet({ session, onSave, onClose }) {
   const inp = inputStyle();
 
   return (
-    <Sheet title={sessionKind(session) === 'swim' ? 'Editar natación' : 'Editar carrera'} onClose={onClose} footer={<Button onClick={() => onSave({ title, distance, pace, effort, notes, blocks })}>Guardar cambios</Button>}>
+    <Sheet title={{ easy: 'Editar carrera', tempo: 'Editar carrera', long: 'Editar carrera', swim: 'Editar natación' }[sessionKind(session)] || 'Editar sesión'} onClose={onClose} footer={<Button onClick={() => onSave({ title, distance, pace, effort, notes, blocks })}>Guardar cambios</Button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label="Título"><input style={inp} value={title} onChange={e => setTitle(e.target.value)} /></Field>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -263,7 +263,7 @@ function EditGymSheet({ session, onSave, onClose }) {
   const inp = inputStyle();
 
   return (
-    <Sheet title="Editar gym" onClose={onClose} footer={<Button onClick={() => onSave({ title, subtitle, exercises })}>Guardar cambios</Button>}>
+    <Sheet title={sessionKind(session) === 'gym' ? 'Editar gym' : 'Editar sesión'} onClose={onClose} footer={<Button onClick={() => onSave({ title, subtitle, exercises })}>Guardar cambios</Button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Título" style={{ flex: 2 }}><input style={inp} value={title} onChange={e => setTitle(e.target.value)} /></Field>
@@ -597,8 +597,9 @@ export default function TrainingScreen() {
         </div>
       )}
 
-      {editSession && editSession.type !== 'gym' && editSession.type !== 'rest' && <EditRunSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
-      {editSession?.type === 'gym' && <EditGymSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
+      {/* Sessions with an exercise list use the gym editor; the rest edit distance and blocks. */}
+      {editSession && (editSession.type === 'gym' || editSession.exercises?.length) && <EditGymSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
+      {editSession && editSession.type !== 'gym' && !editSession.exercises?.length && <EditRunSheet session={editSession} onSave={handleSaveEdit} onClose={() => setEditSession(null)} />}
       {showImport && <ImportSheet onImport={handleImport} onClose={() => setShowImport(false)} />}
       {toast && <Toast>{toast}</Toast>}
 

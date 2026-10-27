@@ -12,7 +12,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['icon.svg', 'kora-touch-180.png'],
       manifest: {
         name: 'Kora · Entreno y peso',
         short_name: 'Kora',
@@ -24,9 +24,9 @@ export default defineConfig({
         start_url: '/Healthyapp/',
         scope: '/Healthyapp/',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: 'kora-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'kora-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'kora-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
       workbox: {
