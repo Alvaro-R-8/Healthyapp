@@ -5,16 +5,40 @@ import WeightScreen from './components/WeightScreen.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
 import Icon from './components/Icon.jsx';
-import { LogoMark, Toast } from './components/ui.jsx';
+import { LogoMark, Toast, GlassCard, Button } from './components/ui.jsx';
 import { supabase, supabaseConfigured } from './utils/supabaseClient.js';
 import { initStore, onSyncMessage } from './utils/storage.js';
-import { C, sans, applyTheme, getThemePref, setThemePref, resolveTheme } from './utils/design.js';
+import { C, sans, display, applyTheme, getThemePref, setThemePref, resolveTheme } from './utils/design.js';
 
 function LoadingScreen() {
   return (
     <div style={{ minHeight: '100vh', color: C.textMid, display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', justifyContent: 'center', fontFamily: sans, fontSize: 14 }}>
       <LogoMark size={56} />
       Cargando...
+    </div>
+  );
+}
+
+// Shown when the cloud read fails, so a broken load never looks like an
+// empty account (which could lead to importing over real data).
+function LoadErrorScreen({ error, onRetry, onSignOut }) {
+  const auth = error?.status === 401 || /jwt|token|auth/i.test(`${error?.code} ${error?.message}`);
+  return (
+    <div style={{ minHeight: '100vh', color: C.text, fontFamily: sans, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <GlassCard radius={30} padding={22} style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <LogoMark size={48} />
+        <div style={{ fontFamily: display, fontSize: 22, fontWeight: 800 }}>No se han podido cargar tus datos</div>
+        <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.55 }}>
+          {auth
+            ? 'Tu sesión ya no es válida (puede pasar al cambiar las claves de Supabase). Cierra sesión y vuelve a entrar con el enlace del email.'
+            : 'Puede ser un problema de conexión. Tus datos siguen guardados en la nube; reintenta en un momento.'}
+        </div>
+        <div style={{ fontSize: 12, color: C.textLow, fontFamily: 'ui-monospace, Menlo, monospace', wordBreak: 'break-word' }}>
+          {[error?.code, error?.message].filter(Boolean).join(' · ') || String(error)}
+        </div>
+        <Button onClick={onRetry}>Reintentar</Button>
+        <Button variant="glass" onClick={onSignOut}>Cerrar sesión y volver a entrar</Button>
+      </GlassCard>
     </div>
   );
 }
@@ -67,6 +91,8 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [session, setSession] = useState(undefined); // undefined = checking, null = logged out
   const [storeReady, setStoreReady] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [syncMsg, setSyncMsg] = useState('');
   const [themePref, setThemePrefState] = useState(getThemePref);
   const [themeMode, setThemeMode] = useState(() => {
@@ -109,10 +135,13 @@ export default function App() {
 
   useEffect(() => {
     if (!session?.user?.id) return;
+    setStoreReady(false);
+    setLoadError(null);
     initStore(session.user.id)
-      .catch(err => console.error('[sync] init:', err))
+      .then(res => { if (res?.error) setLoadError(res.error); })
+      .catch(err => { console.error('[sync] init:', err); setLoadError(err); })
       .finally(() => setStoreReady(true));
-  }, [session?.user?.id]);
+  }, [session?.user?.id, loadAttempt]);
 
   // Cloud save/load problems reported by storage.js.
   useEffect(() => {
@@ -153,9 +182,13 @@ export default function App() {
   if (session === undefined || !storeReady) return <LoadingScreen />;
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    // With a no-longer-valid session the server call fails; still clear it locally.
+    const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: 'local' });
     setScreen('home');
   };
+
+  if (loadError) return <LoadErrorScreen error={loadError} onRetry={() => setLoadAttempt(n => n + 1)} onSignOut={handleSignOut} />;
 
   return (
     // key forces a full re-render after a theme switch so every C.x read refreshes

@@ -99,10 +99,12 @@ export async function initStore(userId) {
     supabase.from('weight_goals').select('goal_weight').eq('user_id', userId).maybeSingle(),
   ]);
 
+  // A failed read must not look like "no data": report it to the caller,
+  // which blocks the app with a retry screen instead of showing it empty.
   const failed = [planRes, completedRes, commentsRes, weightRes, goalRes].filter(r => r.error);
   if (failed.length) {
     failed.forEach(r => console.error('[sync] load:', r.error));
-    notify('No se han podido cargar todos tus datos de la nube. Revisa tu conexión y vuelve a abrir la app.');
+    return { error: failed[0].error };
   }
 
   cache.plan = planRes.data?.data || null;
@@ -117,6 +119,7 @@ export async function initStore(userId) {
     entries: (weightRes.data || []).map(e => ({ id: e.id, date: e.date, weight: Number(e.weight), type: e.type, note: e.note || '' })),
     goalWeight: goalRes.data?.goal_weight != null ? Number(goalRes.data.goal_weight) : null,
   };
+  return { error: null };
 }
 
 export function isStoreReady() {
