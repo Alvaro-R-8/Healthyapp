@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, display, sessionKind, sessionColor, KIND_LABEL } from '../utils/design.js';
 import { getPlan, setPlan, replacePlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
-import { isPast, isToday, formatDateShort, todayStr } from '../utils/dateUtils.js';
+import { isPast, isToday, formatDateShort, todayStr, groupByDay } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
 import { Screen, ScreenHeader, GlassCard, Label, Button, IconButton, Chip, Sheet, Toast, Field, inputStyle } from './ui.jsx';
@@ -23,13 +23,16 @@ function findCurrentWeekIdx(plan) {
   return idx >= 0 ? idx : plan.weeks.length - 1;
 }
 
-function defaultSessionId(week) {
-  if (!week?.sessions?.length) return null;
-  return (week.sessions.find(s => isToday(s.date))
-    || week.sessions.find(s => s.type !== 'rest' && !isPast(s.date))
-    || week.sessions.find(s => s.type !== 'rest')
-    || week.sessions[0]).id;
+function defaultDate(week) {
+  const days = groupByDay(week?.sessions);
+  if (!days.length) return null;
+  return (days.find(d => isToday(d.date))
+    || days.find(d => d.training.length && !isPast(d.date))
+    || days.find(d => d.training.length)
+    || days[0]).date;
 }
+
+const plural = (n) => `${n} entreno${n === 1 ? '' : 's'}`;
 
 // ── Session detail (inline card) ─────────────────────────────────────────────
 function SessionCard({ session, completed, onToggle, onEdit, comment, onSaveComment }) {
@@ -296,36 +299,51 @@ function ImportSheet({ onImport, onClose }) {
 }
 
 // ── Week day strip ────────────────────────────────────────────────────────────
-function DayStrip({ week, selectedId, completed, onSelect }) {
+// One button per calendar day; a dot per workout shows how many that day has.
+function DayStrip({ days, selectedDate, completed, onSelect }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(week.sessions.length, 1)}, minmax(0, 1fr))`, gap: 6 }}>
-      {week.sessions.map(s => {
-        const selected = s.id === selectedId;
-        const rest = s.type === 'rest';
-        const color = sessionColor(s);
-        const done = !!completed[s.id];
-        const today = isToday(s.date);
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(days.length, 1)}, minmax(0, 1fr))`, gap: 6 }}>
+      {days.map(d => {
+        const selected = d.date === selectedDate;
+        const rest = d.training.length === 0;
+        const today = isToday(d.date);
+        const multi = d.training.length > 1;
+        const label = rest ? 'descanso'
+          : `${plural(d.training.length)}, ${d.training.map(s => s.title).join(' y ')}`;
         return (
           <button
-            key={s.id}
-            onClick={() => onSelect(s.id)}
-            aria-label={`${s.dayName} ${formatDateShort(s.date)}: ${rest ? 'descanso' : s.title}${done ? ', hecho' : ''}`}
+            key={d.date}
+            onClick={() => onSelect(d.date)}
+            aria-label={`${d.dayName} ${formatDateShort(d.date)}: ${label}`}
             aria-pressed={selected}
             style={{
-              height: 70, borderRadius: 20, padding: 0,
+              position: 'relative', height: 74, borderRadius: 20, padding: 0,
               border: selected ? 'none' : rest ? `1px dashed ${C.glassBorder}` : `1px solid ${today ? C.primary : C.glassBorder}`,
               background: selected ? 'linear-gradient(180deg, #FF5E7E, #FFB547)' : rest ? 'transparent' : C.glass,
               color: selected ? C.onPrimary : C.textMid,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: selected ? 700 : 500 }}>{s.dayName}</span>
-            <span style={{ fontSize: 17, fontWeight: 800, color: selected ? C.onPrimary : C.text }}>{dayNum(s.date)}</span>
-            <span style={{
-              width: 8, height: 8, borderRadius: '50%', boxSizing: 'border-box',
-              background: rest ? 'transparent' : done ? (selected ? C.onPrimary : color) : 'transparent',
-              border: rest ? 'none' : `2px solid ${selected ? C.onPrimary : color}`,
-            }} />
+            {multi && (
+              <span aria-hidden="true" style={{ position: 'absolute', top: -9, right: -7, minWidth: 20, height: 18, padding: '0 4px', borderRadius: 999, background: selected ? C.onPrimary : C.primary, color: selected ? '#FFF5F2' : C.onPrimary, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', zIndex: 1 }}>
+                ×{d.training.length}
+              </span>
+            )}
+            <span style={{ fontSize: 12, fontWeight: selected ? 700 : 500 }}>{d.dayName}</span>
+            <span style={{ fontSize: 17, fontWeight: 800, color: selected ? C.onPrimary : C.text }}>{dayNum(d.date)}</span>
+            <span style={{ display: 'flex', gap: 3, height: 8 }}>
+              {d.training.slice(0, 3).map(s => {
+                const color = sessionColor(s);
+                const done = !!completed[s.id];
+                return (
+                  <span key={s.id} style={{
+                    width: 8, height: 8, borderRadius: '50%', boxSizing: 'border-box',
+                    background: done ? (selected ? C.onPrimary : color) : 'transparent',
+                    border: `2px solid ${selected ? C.onPrimary : color}`,
+                  }} />
+                );
+              })}
+            </span>
           </button>
         );
       })}
@@ -356,13 +374,14 @@ export default function TrainingScreen() {
   const [comments, setComments] = useState(() => getComments());
   const [showImport, setShowImport] = useState(false);
   const [weekIdx, setWeekIdx] = useState(() => findCurrentWeekIdx(getPlan()));
-  const [selectedId, setSelectedId] = useState(() => defaultSessionId(getPlan()?.weeks?.[findCurrentWeekIdx(getPlan())]));
+  const [selectedDate, setSelectedDate] = useState(() => defaultDate(getPlan()?.weeks?.[findCurrentWeekIdx(getPlan())]));
   const [editSession, setEditSession] = useState(null);
   const [toast, setToast] = useState('');
   const chipsRef = useRef(null);
 
   const week = plan?.weeks?.[weekIdx] || null;
-  const selected = week?.sessions?.find(s => s.id === selectedId) || null;
+  const days = groupByDay(week?.sessions);
+  const selectedDay = days.find(d => d.date === selectedDate) || null;
 
   // Keep the selected week chip in view.
   useEffect(() => {
@@ -374,7 +393,7 @@ export default function TrainingScreen() {
 
   const selectWeek = (i) => {
     setWeekIdx(i);
-    setSelectedId(defaultSessionId(plan.weeks[i]));
+    setSelectedDate(defaultDate(plan.weeks[i]));
   };
 
   const handleToggle = (sessionId) => {
@@ -389,7 +408,7 @@ export default function TrainingScreen() {
     setShowImport(false);
     const idx = findCurrentWeekIdx(newPlan);
     setWeekIdx(idx);
-    setSelectedId(defaultSessionId(newPlan.weeks[idx]));
+    setSelectedDate(defaultDate(newPlan.weeks[idx]));
   };
 
   const handleSaveEdit = (updates) => {
@@ -425,7 +444,7 @@ export default function TrainingScreen() {
 
   const active = week ? week.sessions.filter(s => s.type !== 'rest') : [];
   const doneCount = active.filter(s => completed[s.id]).length;
-  const others = week ? week.sessions.filter(s => s.type !== 'rest' && s.id !== selectedId) : [];
+  const others = week ? week.sessions.filter(s => s.type !== 'rest' && s.date !== selectedDate) : [];
 
   return (
     <Screen>
@@ -461,18 +480,30 @@ export default function TrainingScreen() {
                 </div>
               </div>
 
-              <DayStrip week={week} selectedId={selectedId} completed={completed} onSelect={setSelectedId} />
+              <DayStrip days={days} selectedDate={selectedDate} completed={completed} onSelect={setSelectedDate} />
 
-              {selected && (
+              {selectedDay && selectedDay.training.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
+                  <span style={{ fontFamily: display, fontSize: 18, fontWeight: 800 }}>
+                    {isToday(selectedDay.date) ? 'Hoy' : `${selectedDay.dayName} ${dayNum(selectedDay.date)}`}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: C.onPrimary, background: C.primary, borderRadius: 999, padding: '4px 10px' }}>
+                    {plural(selectedDay.training.length)}
+                  </span>
+                </div>
+              )}
+
+              {selectedDay && (selectedDay.training.length ? selectedDay.training : selectedDay.sessions.slice(0, 1)).map(s => (
                 <SessionCard
-                  session={selected}
-                  completed={!!completed[selected.id]}
-                  onToggle={() => handleToggle(selected.id)}
-                  onEdit={() => setEditSession(selected)}
-                  comment={comments[selected.id] || ''}
+                  key={s.id}
+                  session={s}
+                  completed={!!completed[s.id]}
+                  onToggle={() => handleToggle(s.id)}
+                  onEdit={() => setEditSession(s)}
+                  comment={comments[s.id] || ''}
                   onSaveComment={handleSaveComment}
                 />
-              )}
+              ))}
 
               {others.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -482,7 +513,7 @@ export default function TrainingScreen() {
                     const done = !!completed[s.id];
                     return (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4, borderRadius: 999, background: C.glass, border: `1px solid ${C.glassBorder}`, padding: '0 8px 0 10px', minHeight: 62 }}>
-                        <button onClick={() => setSelectedId(s.id)} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '8px 0', textAlign: 'left', color: C.text }}>
+                        <button onClick={() => { setSelectedDate(s.date); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '8px 0', textAlign: 'left', color: C.text }}>
                           <div style={{ width: 42, height: 42, borderRadius: '50%', background: color + '2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Icon name={KIND_ICON[sessionKind(s)]} size={20} color={color} />
                           </div>

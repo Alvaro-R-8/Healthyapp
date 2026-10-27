@@ -64,13 +64,54 @@ function TodayCard({ session, completed, onToggle }) {
   );
 }
 
+const KIND_ICON = { gym: 'gym', easy: 'run', tempo: 'pace', long: 'long' };
+
+// Several workouts today: one gradient card listing each with its own check.
+function MultiTodayCard({ sessions, completed, onToggle, onOpen }) {
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 32, padding: 18, background: GRADIENT, color: C.onPrimary, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div aria-hidden="true" style={{ position: 'absolute', width: 200, height: 200, right: -60, top: -70, borderRadius: '50%', background: 'rgba(255,255,255,0.22)' }} />
+      <div style={{ position: 'relative', fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '2px 4px 0' }}>
+        {sessions.length} entrenos hoy
+      </div>
+      {sessions.map(s => {
+        const kind = sessionKind(s);
+        const done = !!completed[s.id];
+        const meta = s.type === 'run' ? [s.distance, s.pace].filter(Boolean).join(' · ') : s.subtitle;
+        return (
+          <div key={s.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, borderRadius: 24, background: 'rgba(42,10,20,0.12)', padding: '6px 6px 6px 10px' }}>
+            <button onClick={onOpen} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: '6px 0', textAlign: 'left', color: C.onPrimary, opacity: done ? 0.6 : 1 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name={KIND_ICON[kind] || 'run'} size={21} color={C.onPrimary} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{KIND_LABEL[kind]}</div>
+                <div style={{ fontFamily: display, fontSize: 18, fontWeight: 800, lineHeight: 1.2, textDecoration: done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
+                {meta && <div style={{ fontSize: 14, fontWeight: 600 }}>{meta}</div>}
+              </div>
+            </button>
+            <button
+              onClick={() => onToggle(s.id)}
+              aria-label={done ? `Desmarcar ${s.title}` : `Marcar ${s.title} como hecho`}
+              aria-pressed={done}
+              style={{ width: 48, height: 48, borderRadius: '50%', border: done ? 'none' : '2px solid rgba(42,10,20,0.55)', background: done ? C.onPrimary : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
+            >
+              <Icon name="check" size={20} color={done ? '#FFB547' : C.onPrimary} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Home({ onNavigate }) {
   const plan = getPlan();
   const [completed, setCompleted] = useState(() => getCompleted());
   const weight = getWeight();
 
   const week = useMemo(() => findCurrentWeek(plan), [plan]);
-  const todaySession = week?.sessions?.find(s => isToday(s.date)) || null;
+  const todaySessions = week ? week.sessions.filter(s => isToday(s.date) && s.type !== 'rest') : [];
   const nextSession = useMemo(() => {
     if (!plan?.weeks) return null;
     const today = todayStr();
@@ -89,8 +130,9 @@ export default function Home({ onNavigate }) {
   const rawDate = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   const dateLabel = rawDate.charAt(0).toUpperCase() + rawDate.slice(1);
   const title = !plan ? 'Hola'
-    : !todaySession || todaySession.type === 'rest' ? 'Hoy toca descansar'
-    : todaySession.type === 'gym' ? 'Hoy toca gym' : 'Hoy toca correr';
+    : todaySessions.length === 0 ? 'Hoy toca descansar'
+    : todaySessions.length > 1 ? `Hoy tienes ${todaySessions.length} entrenos`
+    : todaySessions[0].type === 'gym' ? 'Hoy toca gym' : 'Hoy toca correr';
 
   return (
     <Screen>
@@ -110,8 +152,10 @@ export default function Home({ onNavigate }) {
             <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.55 }}>Genera tu plan con el prompt de Ajustes e impórtalo en Entrenos.</div>
             <Button icon="download" onClick={() => onNavigate('training')} style={{ marginTop: 6 }}>Importar plan</Button>
           </GlassCard>
-        ) : todaySession && todaySession.type !== 'rest' ? (
-          <TodayCard session={todaySession} completed={!!completed[todaySession.id]} onToggle={() => setCompleted(toggleCompleted(todaySession.id))} />
+        ) : todaySessions.length > 1 ? (
+          <MultiTodayCard sessions={todaySessions} completed={completed} onToggle={(id) => setCompleted(toggleCompleted(id))} onOpen={() => onNavigate('training')} />
+        ) : todaySessions.length === 1 ? (
+          <TodayCard session={todaySessions[0]} completed={!!completed[todaySessions[0].id]} onToggle={() => setCompleted(toggleCompleted(todaySessions[0].id))} />
         ) : (
           <GlassCard radius={30} padding={20} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: C.inset, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -161,7 +205,7 @@ export default function Home({ onNavigate }) {
 
         <AiChat
           mode="training"
-          context={{ planName: plan?.name, today: todaySession?.title }}
+          context={{ planName: plan?.name, today: todaySessions.map(s => s.title).join(' + ') }}
           renderTrigger={(openChat) => (
             <GlassCard as="button" onClick={openChat} radius={999} padding="0 12px" style={{ height: 60, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', color: C.text, width: '100%' }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', background: C.accent + '33', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

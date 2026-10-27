@@ -38,6 +38,23 @@ export function getMonthShort(monthKey) {
   return d.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase().replace('.', '');
 }
 
+// One entry per calendar day, in plan order. A day with both a rest entry and
+// a workout counts as a training day.
+export function groupByDay(sessions = []) {
+  const days = [];
+  const byDate = {};
+  sessions.forEach(s => {
+    let day = byDate[s.date];
+    if (!day) {
+      day = byDate[s.date] = { date: s.date, dayName: s.dayName, sessions: [], training: [] };
+      days.push(day);
+    }
+    day.sessions.push(s);
+    if (s.type !== 'rest') day.training.push(s);
+  });
+  return days;
+}
+
 export function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
