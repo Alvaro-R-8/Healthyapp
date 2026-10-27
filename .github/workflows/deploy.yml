@@ -37,6 +37,8 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Repository variable; unset keeps the GitHub Pages path /Healthyapp/.
+          BASE_PATH: ${{ vars.BASE_PATH }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
