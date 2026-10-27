@@ -5,9 +5,9 @@ import WeightScreen from './components/WeightScreen.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
 import Icon from './components/Icon.jsx';
-import { LogoMark } from './components/ui.jsx';
+import { LogoMark, Toast } from './components/ui.jsx';
 import { supabase, supabaseConfigured } from './utils/supabaseClient.js';
-import { initStore } from './utils/storage.js';
+import { initStore, onSyncMessage } from './utils/storage.js';
 import { C, sans, applyTheme, getThemePref, setThemePref, resolveTheme } from './utils/design.js';
 
 function LoadingScreen() {
@@ -67,6 +67,7 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [session, setSession] = useState(undefined); // undefined = checking, null = logged out
   const [storeReady, setStoreReady] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const [themePref, setThemePrefState] = useState(getThemePref);
   const [themeMode, setThemeMode] = useState(() => {
     const mode = resolveTheme(getThemePref());
@@ -108,8 +109,21 @@ export default function App() {
 
   useEffect(() => {
     if (!session?.user?.id) return;
-    initStore(session.user.id).then(() => setStoreReady(true));
+    initStore(session.user.id)
+      .catch(err => console.error('[sync] init:', err))
+      .finally(() => setStoreReady(true));
   }, [session?.user?.id]);
+
+  // Cloud save/load problems reported by storage.js.
+  useEffect(() => {
+    let timer;
+    const off = onSyncMessage(msg => {
+      setSyncMsg(msg);
+      clearTimeout(timer);
+      timer = setTimeout(() => setSyncMsg(''), 4500);
+    });
+    return () => { off(); clearTimeout(timer); };
+  }, []);
 
   // iOS opens the magic link in Safari, not in the installed home-screen app —
   // re-check for a session whenever the app regains focus so it picks up a
@@ -151,6 +165,7 @@ export default function App() {
       {screen === 'weight' && <WeightScreen />}
       {screen === 'settings' && <SettingsScreen userEmail={session.user.email} onSignOut={handleSignOut} themePref={themePref} onThemeChange={changeTheme} />}
       <TabBar screen={screen} onChange={setScreen} />
+      {syncMsg && <Toast>{syncMsg}</Toast>}
     </div>
   );
 }

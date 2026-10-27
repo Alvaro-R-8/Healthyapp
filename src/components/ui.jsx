@@ -180,7 +180,7 @@ export function Sheet({ title, eyebrow, onClose, children, footer, maxHeight = '
 
 export function Toast({ children }) {
   return (
-    <div role="status" style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom) + 112px)', left: '50%', transform: 'translateX(-50%)', background: C.bgElevated, border: `1px solid ${C.glassBorder}`, borderRadius: 999, padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, zIndex: 500, whiteSpace: 'nowrap', boxShadow: '0 8px 30px rgba(0,0,0,0.25)' }}>
+    <div role="status" style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom) + 112px)', left: '50%', transform: 'translateX(-50%)', background: C.bgElevated, border: `1px solid ${C.glassBorder}`, borderRadius: 22, padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, zIndex: 500, width: 'max-content', maxWidth: 'calc(100% - 32px)', textAlign: 'center', lineHeight: 1.4, boxShadow: '0 8px 30px rgba(0,0,0,0.25)' }}>
       {children}
     </div>
   );
