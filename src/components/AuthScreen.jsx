@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { C, sans, display, APP_NAME } from '../utils/design.js';
-import { supabase, supabaseConfigured } from '../utils/supabaseClient.js';
+import { supabase, supabaseConfigured, supabaseHost } from '../utils/supabaseClient.js';
 import Icon from './Icon.jsx';
 import { GlassCard, Button, LogoMark, inputStyle } from './ui.jsx';
 
@@ -178,6 +178,9 @@ export default function AuthScreen() {
           <Icon name="refresh" size={14} color={C.textMid} />
           Forzar actualización de la app
         </button>
+        <div style={{ marginTop: 10, fontSize: 12, color: C.textLow, textAlign: 'center', wordBreak: 'break-all' }}>
+          v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'} · {typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : ''} · {supabaseHost}
+        </div>
       </div>
     </div>
   );

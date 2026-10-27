@@ -314,7 +314,7 @@ export default function SettingsScreen({ userEmail, onSignOut, themePref, onThem
       </Section>
 
       <div style={{ fontSize: 13, color: C.textMid, textAlign: 'center', lineHeight: 1.7, padding: '4px 0' }}>
-        {APP_NAME} · v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'}
+        {APP_NAME} · v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'} · {typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : ''}
       </div>
 
       {showImport && (

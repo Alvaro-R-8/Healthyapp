@@ -11,6 +11,8 @@ export default defineConfig({
   define: {
     // Injected at build time so the app can display which version is loaded
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    // Short commit id in CI (GITHUB_SHA), to tell builds apart on the device
+    __BUILD_ID__: JSON.stringify((process.env.GITHUB_SHA || 'local').slice(0, 7)),
   },
   plugins: [
     react(),
