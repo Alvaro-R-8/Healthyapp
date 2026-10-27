@@ -1,35 +1,66 @@
 import { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Dot } from 'recharts';
-import { C, mono, sans, display } from '../utils/design.js';
+import { C, GRADIENT, display, sans } from '../utils/design.js';
 import { getWeight, addWeightEntry, deleteWeightEntry, setGoalWeight, replaceWeightEntries } from '../utils/storage.js';
 import { formatDateShort, formatDateMini } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
+import { Screen, ScreenHeader, GlassCard, Label, Button, Segmented, Sheet, Field, Ring, inputStyle } from './ui.jsx';
+
+const fmt = (n, d = 1) => Number(n).toFixed(d).replace('.', ',');
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
 function WeightDot({ cx, cy, payload }) {
   if (!payload) return null;
-  const color = payload.type === 'official' ? C.lime : C.amber;
-  return <Dot cx={cx} cy={cy} r={payload.type === 'official' ? 5 : 3} fill={color} stroke={C.bg} strokeWidth={2} />;
+  const color = payload.type === 'official' ? C.primary : C.secondary;
+  return <Dot cx={cx} cy={cy} r={payload.type === 'official' ? 5 : 3} fill={color} stroke={C.bgElevated} strokeWidth={2} />;
 }
 
 function WeightTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
-    <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontFamily: mono, fontSize: 12 }}>
+    <div style={{ background: C.bgElevated, border: `1px solid ${C.glassBorder}`, borderRadius: 14, padding: '10px 14px', fontFamily: sans, fontSize: 13, color: C.text }}>
       <div style={{ color: C.textMid, marginBottom: 4 }}>{d.displayDate}</div>
-      <div style={{ color: C.text, fontSize: 15, fontWeight: 700 }}>{d.weight} kg</div>
-      <div style={{ color: d.type === 'official' ? C.lime : C.amber, fontSize: 10, marginTop: 2 }}>
-        {d.type === 'official' ? '● Oficial' : '◎ Control'}
+      <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(d.weight)} kg</div>
+      <div style={{ color: d.type === 'official' ? C.primaryText : C.secondary, fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+        {d.type === 'official' ? 'Oficial' : 'Control'}
       </div>
-      {d.note && <div style={{ color: C.textLow, fontSize: 10, marginTop: 4, maxWidth: 160 }}>{d.note}</div>}
+      {d.note && <div style={{ color: C.textMid, fontSize: 12, marginTop: 4, maxWidth: 180 }}>{d.note}</div>}
+    </div>
+  );
+}
+
+// Monday of the week a YYYY-MM-DD date falls in, as YYYY-MM-DD.
+function weekStart(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+
+function WeeklyBars({ weeks }) {
+  const max = Math.max(...weeks.map(w => w.avg));
+  const min = Math.min(...weeks.map(w => w.avg));
+  const span = max - min || 1;
+  return (
+    <div role="img" aria-label={`Media semanal de peso: de ${fmt(weeks[0].avg)} a ${fmt(weeks[weeks.length - 1].avg)} kg`} style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`, gap: 10, alignItems: 'end', height: 128 }}>
+      {weeks.map((w, i) => {
+        const last = i === weeks.length - 1;
+        const h = 30 + ((w.avg - min) / span) * 70;
+        return (
+          <div key={w.start} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: last ? 800 : 600, color: last ? C.text : C.textMid }}>{fmt(w.avg)}</div>
+            <div style={{ width: '100%', maxWidth: 30, height: h, borderRadius: 10, background: last ? 'linear-gradient(180deg, #FF5E7E, #FFB547)' : C.primary + '30' }} />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function WeightScreen({ onBack, onSettings }) {
+export default function WeightScreen() {
   const [data, setData] = useState(() => getWeight());
   const [type, setType] = useState('official');
   const [weight, setWeightInput] = useState('');
@@ -39,7 +70,6 @@ export default function WeightScreen({ onBack, onSettings }) {
   const [modal, setModal] = useState(null);
   const [importText, setImportText] = useState('');
   const [copied, setCopied] = useState(false);
-
 
   const sorted = useMemo(() =>
     [...(data.entries || [])].sort((a, b) => a.date.localeCompare(b.date)),
@@ -56,6 +86,8 @@ export default function WeightScreen({ onBack, onSettings }) {
   const totalLost = first && latest ? (first.weight - latest.weight) : 0;
   const hasGoal = data.goalWeight != null;
   const remaining = latest && hasGoal ? (latest.weight - data.goalWeight) : null;
+  const progress = hasGoal && first && latest && first.weight > data.goalWeight
+    ? (first.weight - latest.weight) / (first.weight - data.goalWeight) : 0;
 
   const weeklyRate = useMemo(() => {
     const officials = sorted.filter(e => e.type === 'official');
@@ -69,18 +101,27 @@ export default function WeightScreen({ onBack, onSettings }) {
   const weeksToGoal = weeklyRate && parseFloat(weeklyRate) > 0 && remaining > 0
     ? Math.ceil(remaining / parseFloat(weeklyRate)) : null;
 
+  const weeklyAvgs = useMemo(() => {
+    const groups = {};
+    sorted.forEach(e => { (groups[weekStart(e.date)] ||= []).push(e.weight); });
+    return Object.keys(groups).sort().slice(-8).map(start => ({
+      start, avg: groups[start].reduce((a, b) => a + b, 0) / groups[start].length,
+    }));
+  }, [sorted]);
+
   const yValues = sorted.map(e => e.weight);
   const goalValues = hasGoal ? [data.goalWeight] : [];
   const yMin = yValues.length ? Math.floor(Math.min(...yValues, ...goalValues) - 1) : (hasGoal ? data.goalWeight - 5 : 'auto');
   const yMax = yValues.length ? Math.ceil(Math.max(...yValues) + 1) : (hasGoal ? data.goalWeight + 10 : 'auto');
 
   const addEntry = () => {
-    const w = parseFloat(weight);
+    const w = parseFloat(String(weight).replace(',', '.'));
     if (!weight || !date || isNaN(w) || w < 30 || w > 300) return;
     setData(addWeightEntry({ date, weight: w, type, note }));
     setWeightInput('');
     setNote('');
     setDate(new Date().toISOString().split('T')[0]);
+    setModal(null);
   };
 
   const deleteEntry = (id) => {
@@ -89,193 +130,197 @@ export default function WeightScreen({ onBack, onSettings }) {
 
   const handleGoalBlur = () => {
     if (!goalInput.trim()) { setData(setGoalWeight(null)); return; }
-    const v = parseFloat(goalInput);
+    const v = parseFloat(goalInput.replace(',', '.'));
     if (!isNaN(v) && v > 20 && v < 300) setData(setGoalWeight(v));
     else setGoalInput(hasGoal ? String(data.goalWeight) : '');
   };
 
   const aiContext = { goalWeight: data.goalWeight, currentWeight: latest?.weight, weeklyRate, recentEntries: sorted.slice(-5) };
 
-  const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: mono, fontSize: 13, outline: 'none', width: '100%' };
-
-  const stats = [
-    { label: 'Peso actual', value: latest ? `${latest.weight} kg` : '—', sub: latest ? formatDateShort(latest.date) : 'sin datos', accent: false },
-    { label: 'Por perder', value: remaining !== null ? `${Math.max(0, remaining).toFixed(1)} kg` : '—', sub: hasGoal ? `hasta ${data.goalWeight} kg` : 'define tu meta', accent: remaining !== null && remaining < 10 },
-    { label: 'Ritmo semanal', value: weeklyRate ? `-${weeklyRate} kg` : '—', sub: 'últimas 2 oficiales', accent: !!weeklyRate },
-    { label: 'Semanas restantes', value: weeksToGoal ? `~${weeksToGoal}` : '—', sub: 'a ritmo actual', accent: false },
-  ];
+  const tickStyle = { fill: C.textMid, fontSize: 11, fontFamily: 'Inter, sans-serif' };
+  const inp = inputStyle();
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto', position: 'relative' }}>
-      {/* Header — plain flex item, never scrolls, no sticky needed */}
-      <div style={{ flexShrink: 0, padding: 'calc(env(safe-area-inset-top) + 20px) 20px 12px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <Icon name="back" size={16} color={C.textMid} />
+    <Screen>
+      <ScreenHeader
+        title="Peso"
+        subtitle={hasGoal ? `Meta ${fmt(data.goalWeight)} kg${remaining > 0 ? ` · faltan ${fmt(remaining)} kg` : ''}` : 'Define tu meta para ver el progreso'}
+        right={
+          <button onClick={() => setModal('add')} aria-label="Registrar peso" style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Icon name="plus" size={22} color={C.onPrimary} />
           </button>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: C.lime, letterSpacing: '0.15em', fontFamily: mono }}>CONTROL DE PESO</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: display, lineHeight: 1.1 }}>Weight Journey</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.lime, fontFamily: display, lineHeight: 1 }}>
-              {totalLost > 0 ? `-${totalLost.toFixed(1)}` : '—'} <span style={{ fontSize: 13, color: C.textLow, fontWeight: 400 }}>kg</span>
+        }
+      />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Ring + key numbers */}
+        <GlassCard radius={32} padding={18} style={{ display: 'flex', alignItems: 'center', gap: 16, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+          <Ring size={156} stroke={15} value={progress} label={latest ? `${fmt(latest.weight)} kg${hasGoal ? `, ${Math.round(Math.max(0, Math.min(1, progress)) * 100)}% del camino a la meta` : ''}` : 'Sin registros'}>
+            <span style={{ fontFamily: display, fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>{latest ? fmt(latest.weight) : '—'}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.textMid, marginTop: 4 }}>{latest ? `kg · ${formatDateShort(latest.date)}` : 'sin datos'}</span>
+          </Ring>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            <label style={{ display: 'block' }}>
+              <span style={{ fontSize: 12, color: C.textMid, display: 'block' }}>Meta (kg)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={goalInput}
+                placeholder="Añadir"
+                onChange={e => setGoalInput(e.target.value)}
+                onBlur={handleGoalBlur}
+                onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                style={{ width: 90, background: 'transparent', border: 'none', borderBottom: `2px dashed ${C.glassBorder}`, color: C.primaryText, fontFamily: sans, fontSize: 19, fontWeight: 800, outline: 'none', padding: '2px 0' }}
+              />
+            </label>
+            <div>
+              <div style={{ fontSize: 12, color: C.textMid }}>Por perder</div>
+              <div style={{ fontSize: 19, fontWeight: 800 }}>{remaining !== null ? `${fmt(Math.max(0, remaining))} kg` : '—'}</div>
             </div>
-            <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono }}>perdidos</div>
-          </div>
-          <button onClick={onSettings} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <Icon name="settings" size={16} color={C.textMid} />
-          </button>
-        </div>
-      </div>
-
-      {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <div style={{ padding: '16px 16px 100px' }}>
-        {/* Stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px' }}>
-              <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, letterSpacing: '0.08em', marginBottom: 4 }}>{s.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: s.accent ? C.lime : C.text, fontFamily: display, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: C.textLow, marginTop: 4 }}>{s.sub}</div>
+            <div>
+              <div style={{ fontSize: 12, color: C.textMid }}>Llevas</div>
+              <div style={{ fontSize: 19, fontWeight: 800, color: totalLost > 0 ? C.success : C.text }}>{first && latest ? `${totalLost > 0 ? '−' : totalLost < 0 ? '+' : ''}${fmt(Math.abs(totalLost))} kg` : '—'}</div>
             </div>
-          ))}
+          </div>
+        </GlassCard>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+          <GlassCard radius={22} padding="12px 14px">
+            <div style={{ fontSize: 13, color: C.textMid }}>Ritmo semanal</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2, color: weeklyRate && parseFloat(weeklyRate) > 0 ? C.success : C.text }}>{weeklyRate ? `−${fmt(weeklyRate, 2)} kg` : '—'}</div>
+            <div style={{ fontSize: 12, color: C.textMid, marginTop: 2 }}>últimos 2 oficiales</div>
+          </GlassCard>
+          <GlassCard radius={22} padding="12px 14px">
+            <div style={{ fontSize: 13, color: C.textMid }}>Semanas a la meta</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{weeksToGoal ? `~${weeksToGoal}` : '—'}</div>
+            <div style={{ fontSize: 12, color: C.textMid, marginTop: 2 }}>a ritmo actual</div>
+          </GlassCard>
         </div>
 
-        {/* Goal */}
-        <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="target" size={16} color={C.lime} />
-          <span style={{ fontSize: 13, color: C.textMid, fontFamily: mono }}>Meta:</span>
-          <input
-            type="number"
-            value={goalInput}
-            placeholder="—"
-            onChange={e => setGoalInput(e.target.value)}
-            onBlur={handleGoalBlur}
-            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-            style={{ background: 'transparent', border: 'none', borderBottom: `1px dashed ${C.borderHigh}`, color: C.lime, fontFamily: mono, fontSize: 14, width: 50, outline: 'none', textAlign: 'center', padding: '0 2px' }}
-          />
-          <span style={{ fontSize: 13, color: C.textMid, fontFamily: mono }}>kg</span>
-          {first && <span style={{ fontSize: 11, color: C.textLow, fontFamily: mono, marginLeft: 'auto' }}>Inicio: {first.weight} kg</span>}
-        </div>
+        {weeklyAvgs.length >= 2 && (
+          <GlassCard radius={28} padding="16px 18px" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Media semanal</div>
+              <div style={{ fontSize: 13, color: C.textMid }}>últimas {weeklyAvgs.length} semanas</div>
+            </div>
+            <WeeklyBars weeks={weeklyAvgs} />
+          </GlassCard>
+        )}
 
-        {/* Chart */}
-        <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 8px 12px', marginBottom: 14 }}>
-          <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, letterSpacing: '0.1em', marginBottom: 10, paddingLeft: 8 }}>EVOLUCIÓN DEL PESO</div>
+        <GlassCard radius={28} padding="16px 8px 12px">
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, paddingLeft: 10 }}>Evolución</div>
           {chartData.length === 0 ? (
-            <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textLow, fontSize: 12, fontFamily: mono }}>
+            <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMid, fontSize: 14 }}>
               Añade tu primer peso para ver la gráfica
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={C.lime} stopOpacity={0.15} />
-                    <stop offset="95%" stopColor={C.lime} stopOpacity={0} />
+                    <stop offset="5%" stopColor={C.primary} stopOpacity={0.28} />
+                    <stop offset="95%" stopColor={C.secondary} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="displayDate" tick={{ fill: C.textLow, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[yMin, yMax]} tick={{ fill: C.textLow, fontSize: 9, fontFamily: 'DM Mono' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={C.line} vertical={false} />
+                <XAxis dataKey="displayDate" tick={tickStyle} axisLine={false} tickLine={false} />
+                <YAxis domain={[yMin, yMax]} tick={tickStyle} axisLine={false} tickLine={false} />
                 <Tooltip content={<WeightTooltip />} />
-                {hasGoal && <ReferenceLine y={data.goalWeight} stroke={C.lime} strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `Meta ${data.goalWeight}`, fill: C.lime, fontSize: 9, fontFamily: 'DM Mono' }} />}
-                <Area type="monotone" dataKey="weight" stroke={C.lime} strokeWidth={2} fill="url(#wgrad)" dot={<WeightDot />} activeDot={{ r: 6, fill: C.lime, stroke: C.bg, strokeWidth: 2 }} />
+                {hasGoal && <ReferenceLine y={data.goalWeight} stroke={C.success} strokeDasharray="6 4" label={{ value: `Meta ${fmt(data.goalWeight)}`, fill: C.success, fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', position: 'insideTopRight' }} />}
+                <Area type="monotone" dataKey="weight" stroke={C.primary} strokeWidth={3} fill="url(#wgrad)" dot={<WeightDot />} activeDot={{ r: 6, fill: C.primary, stroke: C.bgElevated, strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
           <div style={{ display: 'flex', gap: 16, paddingLeft: 12, marginTop: 8 }}>
-            {[{ color: C.lime, label: 'Oficial (lunes)' }, { color: C.amber, label: 'Control' }].map((l, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.textLow, fontFamily: mono }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: l.color }} /> {l.label}
+            {[{ color: C.primary, label: 'Oficial (lunes)' }, { color: C.secondary, label: 'Control' }].map((l, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.textMid }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} /> {l.label}
               </div>
             ))}
           </div>
-        </div>
+        </GlassCard>
 
-        {/* Add + History */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Add */}
-          <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 16, padding: '18px 14px' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: display, marginBottom: 12 }}>Registrar</div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-              {[{ id: 'official', label: 'Oficial' }, { id: 'check', label: 'Control' }].map(t => (
-                <button key={t.id} onClick={() => setType(t.id)} style={{ flex: 1, padding: '7px 6px', borderRadius: 8, border: `1px solid ${type === t.id ? (t.id === 'official' ? C.lime : C.amber) : C.border}`, background: type === t.id ? (t.id === 'official' ? 'rgba(200,240,96,0.1)' : 'rgba(245,158,11,0.1)') : 'transparent', color: type === t.id ? (t.id === 'official' ? C.lime : C.amber) : C.textLow, fontFamily: mono, fontSize: 10, cursor: 'pointer' }}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <input type="number" placeholder="Peso (kg)" value={weight} onChange={e => setWeightInput(e.target.value)} step="0.1" min="30" max="300" onKeyDown={e => e.key === 'Enter' && addEntry()} style={{ ...inp, marginBottom: 7 }} />
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, marginBottom: 7, fontSize: 12 }} />
-            <textarea placeholder="Nota..." value={note} onChange={e => setNote(e.target.value)} rows={2} style={{ ...inp, resize: 'none', marginBottom: 8, fontFamily: sans, fontSize: 12 }} />
-            <button onClick={addEntry} style={{ width: '100%', padding: '10px', background: C.lime, color: '#0e0e11', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>GUARDAR</button>
-            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-              <button onClick={() => { setCopied(false); setModal('export'); }} style={{ flex: 1, padding: '7px 6px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.lime, fontFamily: mono, fontSize: 9, cursor: 'pointer', letterSpacing: '0.04em' }}>↓ EXPORTAR</button>
-              <button onClick={() => setModal('import')} style={{ flex: 1, padding: '7px 6px', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.amber, fontFamily: mono, fontSize: 9, cursor: 'pointer', letterSpacing: '0.04em' }}>↑ IMPORTAR</button>
+        {/* History */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+            <Label>Historial</Label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => { setCopied(false); setModal('export'); }} style={{ height: 34, padding: '0 12px', borderRadius: 999, border: 'none', background: C.glassStrong, color: C.text, fontSize: 13, fontWeight: 700 }}>Exportar</button>
+              <button onClick={() => setModal('import')} style={{ height: 34, padding: '0 12px', borderRadius: 999, border: 'none', background: C.glassStrong, color: C.text, fontSize: 13, fontWeight: 700 }}>Importar</button>
             </div>
           </div>
-
-          {/* History */}
-          <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 16, padding: '18px 14px', overflow: 'hidden' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: display, marginBottom: 12 }}>Historial</div>
-            {sorted.length === 0 ? (
-              <div style={{ textAlign: 'center', color: C.textLow, fontFamily: mono, fontSize: 11, padding: '24px 0', lineHeight: 1.7 }}>Sin registros.<br />Añade tu primer peso.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 300, overflowY: 'auto' }}>
-                {[...sorted].reverse().map((e, i, arr) => {
-                  const prev = arr[i + 1];
-                  const delta = prev ? (e.weight - prev.weight).toFixed(1) : null;
-                  return (
-                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 8px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}` }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: e.type === 'official' ? C.lime : C.amber, flexShrink: 0 }} />
-                      <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, flexShrink: 0, width: 56 }}>{formatDateMini(e.date)}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: e.type === 'official' ? C.lime : C.amber, fontFamily: mono, flexShrink: 0 }}>{e.weight}</div>
-                      {delta !== null && <div style={{ fontSize: 10, fontFamily: mono, color: parseFloat(delta) > 0 ? C.red : C.lime, flexShrink: 0 }}>{parseFloat(delta) > 0 ? `+${delta}` : delta}</div>}
-                      <button onClick={() => deleteEntry(e.id)} style={{ background: 'none', border: 'none', color: C.textLow, cursor: 'pointer', fontSize: 11, padding: '2px 3px', marginLeft: 'auto', flexShrink: 0 }}>✕</button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {sorted.length === 0 ? (
+            <GlassCard radius={22} padding={20} style={{ textAlign: 'center', color: C.textMid, fontSize: 14 }}>Sin registros. Pulsa + para añadir tu primer peso.</GlassCard>
+          ) : (
+            [...sorted].reverse().map((e, i, arr) => {
+              const prev = arr[i + 1];
+              const delta = prev ? e.weight - prev.weight : null;
+              const official = e.type === 'official';
+              return (
+                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '6px 6px 6px 16px', borderRadius: 999, background: C.glass, border: `1px solid ${C.glassBorder}` }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', boxSizing: 'border-box', background: official ? C.primary : 'transparent', border: official ? 'none' : `2px solid ${C.secondary}`, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{formatDateMini(e.date)} <span style={{ fontWeight: 500, color: C.textMid }}>· {official ? 'Oficial' : 'Control'}</span></div>
+                    {e.note && <div style={{ fontSize: 13, color: C.textMid, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.note}</div>}
+                  </div>
+                  {delta !== null && <div style={{ fontSize: 13, fontWeight: 700, color: delta > 0 ? C.dangerText : C.success, flexShrink: 0 }}>{delta > 0 ? '+' : delta < 0 ? '−' : ''}{fmt(Math.abs(delta))}</div>}
+                  <div style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{fmt(e.weight)} kg</div>
+                  <button onClick={() => deleteEntry(e.id)} aria-label={`Borrar registro del ${formatDateMini(e.date)}`} style={{ width: 44, height: 44, borderRadius: '50%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name="close" size={16} color={C.textLow} />
+                  </button>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* Export modal */}
+      {modal === 'add' && (
+        <Sheet title="Registrar peso" onClose={() => setModal(null)} footer={<Button onClick={addEntry} disabled={!weight}>Guardar</Button>}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Segmented
+              options={[{ value: 'official', label: 'Oficial' }, { value: 'control', label: 'Control' }]}
+              value={type}
+              onChange={setType}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Field label="Peso (kg)" style={{ flex: 1 }}>
+                <input type="text" inputMode="decimal" placeholder={latest ? fmt(latest.weight) : '80,0'} value={weight} onChange={e => setWeightInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addEntry()} style={{ ...inp, fontSize: 20, fontWeight: 800 }} />
+              </Field>
+              <Field label="Fecha" style={{ flex: 1 }}>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
+              </Field>
+            </div>
+            <Field label="Nota (opcional)">
+              <textarea placeholder="Cómo te encuentras, contexto..." value={note} onChange={e => setNote(e.target.value)} rows={2} style={{ ...inp, resize: 'none' }} />
+            </Field>
+          </div>
+        </Sheet>
+      )}
+
       {modal === 'export' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setModal(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 18, width: '100%', maxWidth: 480, padding: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: display, marginBottom: 8 }}>Exportar pesos</div>
-            <div style={{ fontSize: 12, color: C.textMid, fontFamily: mono, marginBottom: 12, lineHeight: 1.6 }}>Copia este JSON y guárdalo. Úsalo para restaurar desde Ajustes.</div>
-            <textarea readOnly value={JSON.stringify(data.entries, null, 2)} rows={8} onClick={e => e.target.select()} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, color: C.lime, fontFamily: mono, fontSize: 11, outline: 'none', resize: 'none' }} />
-            {copied && <div style={{ color: C.lime, fontFamily: mono, fontSize: 11, marginTop: 6 }}>✓ Copiado</div>}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={() => { navigator.clipboard?.writeText(JSON.stringify(data.entries, null, 2)).then(() => setCopied(true)).catch(() => {}); }} style={{ flex: 1, padding: 11, background: C.lime, color: '#0e0e11', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Copiar</button>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: 11, background: C.surfaceHigh, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}>Cerrar</button>
-            </div>
-          </div>
-        </div>
+        <Sheet
+          title="Exportar pesos"
+          onClose={() => setModal(null)}
+          footer={<Button icon="copy" onClick={() => { navigator.clipboard?.writeText(JSON.stringify(data.entries, null, 2)).then(() => setCopied(true)).catch(() => {}); }}>{copied ? '✓ Copiado' : 'Copiar'}</Button>}
+        >
+          <div style={{ fontSize: 15, color: C.textMid, marginBottom: 12, lineHeight: 1.55 }}>Copia este JSON y guárdalo. Úsalo para restaurar desde Ajustes.</div>
+          <textarea aria-label="JSON de pesos" readOnly value={JSON.stringify(data.entries, null, 2)} rows={8} onClick={e => e.target.select()} style={{ ...inp, fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'none' }} />
+        </Sheet>
       )}
 
-      {/* Import modal */}
       {modal === 'import' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setModal(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 18, width: '100%', maxWidth: 480, padding: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: display, marginBottom: 8 }}>Importar pesos</div>
-            <div style={{ fontSize: 12, color: C.textMid, fontFamily: mono, marginBottom: 12, lineHeight: 1.6 }}>Pega el JSON exportado. Reemplazará los datos actuales.</div>
-            <textarea placeholder='Pega aquí el JSON de pesos...' value={importText} onChange={e => setImportText(e.target.value)} rows={8} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, color: C.text, fontFamily: mono, fontSize: 11, outline: 'none', resize: 'none' }} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={() => { try { const p = JSON.parse(importText); if (Array.isArray(p)) { setData(replaceWeightEntries(p)); setModal(null); setImportText(''); } else alert('Formato inválido.'); } catch { alert('JSON inválido.'); } }} style={{ flex: 1, padding: 11, background: C.lime, color: '#0e0e11', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cargar</button>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: 11, background: C.surfaceHigh, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
-            </div>
-          </div>
-        </div>
+        <Sheet
+          title="Importar pesos"
+          onClose={() => setModal(null)}
+          footer={<Button onClick={() => { try { const p = JSON.parse(importText); if (Array.isArray(p)) { setData(replaceWeightEntries(p)); setModal(null); setImportText(''); } else alert('Formato inválido.'); } catch { alert('JSON inválido.'); } }} disabled={!importText.trim()}>Cargar</Button>}
+        >
+          <div style={{ fontSize: 15, color: C.textMid, marginBottom: 12, lineHeight: 1.55 }}>Pega el JSON exportado. Reemplazará los datos actuales.</div>
+          <textarea aria-label="JSON de pesos" placeholder="Pega aquí el JSON de pesos..." value={importText} onChange={e => setImportText(e.target.value)} rows={8} style={{ ...inp, fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'none' }} />
+        </Sheet>
       )}
-
-      </div>{/* end scroll outer */}
 
       <AiChat mode="weight" context={aiContext} />
-    </div>
+    </Screen>
   );
 }

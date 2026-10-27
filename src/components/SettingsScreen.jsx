@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { C, mono, sans, display } from '../utils/design.js';
+import { C, APP_NAME } from '../utils/design.js';
 import { exportAll, importAll, clearAll, getApiKey, setApiKey, clearApiKey, getPlan } from '../utils/storage.js';
-import Icon from './Icon.jsx';
+import { Screen, ScreenHeader, Section, Row, Button, Segmented, Sheet, Toast, Field, inputStyle } from './ui.jsx';
 
 const PLAN_SCHEMA = `{
   "id": "mi-plan-running",
@@ -23,7 +23,7 @@ const PLAN_SCHEMA = `{
           "type": "gym",
           "title": "Piernas y core",
           "subtitle": "30 min",
-          "color": "#3B82F6",
+          "color": "#A78BFA",
           "exercises": [
             {
               "name": "Sentadillas",
@@ -41,7 +41,7 @@ const PLAN_SCHEMA = `{
           "type": "run",
           "title": "Carrera fácil",
           "subtitle": "5 km",
-          "color": "#22C55E",
+          "color": "#5EEAD4",
           "distance": "5 km",
           "pace": "7:15–7:30 /km",
           "effort": "Fácil",
@@ -58,7 +58,7 @@ const PLAN_SCHEMA = `{
           "date": "YYYY-MM-DD",
           "type": "rest",
           "title": "Descanso",
-          "color": "#1a2235"
+          "color": "#9C8590"
         }
       ]
     }
@@ -90,11 +90,11 @@ CÓMO DISEÑAR EL PLAN:
 TIPOS DE SESIÓN ("type"): "gym", "run" o "rest". Cada día de cada semana debe tener una sesión (los días sin entreno son "rest").
 
 COLORES A USAR:
-- gym: "#3B82F6"
-- carrera fácil: "#22C55E"
-- tempo/intervalos: "#F59E0B"
-- carrera larga: "#A855F7"
-- descanso: "#1a2235"
+- gym: "#A78BFA"
+- carrera fácil: "#5EEAD4"
+- tempo/intervalos: "#FFB547"
+- carrera larga: "#FF5E7E"
+- descanso: "#9C8590"
 
 El JSON debe seguir EXACTAMENTE este formato (no modifiques la estructura):
 ${PLAN_SCHEMA}
@@ -103,41 +103,8 @@ Genera el JSON completo para las ${nWeeks} semanas empezando el ${start}.
 Incluye todos los ejercicios detallados. Devuelve solo el JSON, sin texto adicional. No trunces el output.`;
 }
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
-function Section({ title, accent = C.blue, children }) {
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 10, color: accent, letterSpacing: '0.15em', fontFamily: mono, marginBottom: 12, paddingLeft: 4 }}>{title}</div>
-      <div style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden' }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Row({ icon, iconColor, label, sublabel, right, onClick, danger }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: 'none', border: 'none', borderBottom: `1px solid ${C.border}`, cursor: onClick ? 'pointer' : 'default', textAlign: 'left' }}
-    >
-      {icon && (
-        <div style={{ width: 34, height: 34, borderRadius: 9, background: (iconColor || C.blue) + '1a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name={icon} size={16} color={iconColor || C.blue} />
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: danger ? C.red : C.text, fontWeight: 500 }}>{label}</div>
-        {sublabel && <div style={{ fontSize: 11, color: C.textLow, marginTop: 2 }}>{sublabel}</div>}
-      </div>
-      {right && <div style={{ fontSize: 12, color: C.textMid, fontFamily: mono, flexShrink: 0 }}>{right}</div>}
-      {onClick && !right && <Icon name="chevron" size={14} color={C.textLow} />}
-    </button>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
+export default function SettingsScreen({ userEmail, onSignOut, themePref, onThemeChange }) {
   const [apiKey, setApiKeyState] = useState(() => getApiKey());
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiInput, setShowApiInput] = useState(false);
@@ -168,7 +135,7 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `healthyapp-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${APP_NAME.toLowerCase()}-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('✓ Archivo descargado');
@@ -222,172 +189,142 @@ export default function SettingsScreen({ onBack, userEmail, onSignOut }) {
     navigator.clipboard?.writeText(prompt).then(() => { setPromptCopied(true); showToast('✓ Prompt copiado'); setTimeout(() => setPromptCopied(false), 2000); }).catch(() => showToast('No se pudo copiar'));
   };
 
-  const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontFamily: mono, fontSize: 12, outline: 'none', width: '100%' };
+  const inp = inputStyle();
+  const plan = getPlan();
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bg, color: C.text, fontFamily: sans, maxWidth: 480, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ flexShrink: 0, padding: 'calc(env(safe-area-inset-top) + 20px) 20px 16px', background: C.bg, borderBottom: `1px solid ${C.surface}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={onBack} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <Icon name="back" size={16} color={C.textMid} />
-          </button>
-          <div>
-            <div style={{ fontSize: 10, color: C.textLow, letterSpacing: '0.15em', fontFamily: mono }}>CONFIGURACIÓN</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: display, lineHeight: 1.1 }}>Ajustes</div>
-          </div>
+    <Screen>
+      <ScreenHeader title="Ajustes" />
+
+      <Section title="Apariencia">
+        <div style={{ padding: 14 }}>
+          <Segmented
+            options={[
+              { value: 'system', label: 'Sistema', icon: 'monitor' },
+              { value: 'light', label: 'Claro', icon: 'sun' },
+              { value: 'dark', label: 'Oscuro', icon: 'rest' },
+            ]}
+            value={themePref}
+            onChange={onThemeChange}
+          />
         </div>
-      </div>
+      </Section>
 
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <div style={{ padding: '20px 16px 60px' }}>
-
-        {/* Account */}
-        {userEmail && (
-          <Section title="CUENTA" accent={C.green}>
-            <Row icon="key" iconColor={C.green} label={userEmail} sublabel="Sesión iniciada · datos en la nube" />
-            <Row icon="trash" iconColor={C.red} label="Cerrar sesión" onClick={onSignOut} danger />
-          </Section>
-        )}
-
-        {/* Backup */}
-        <Section title="BACKUP Y RESTAURACIÓN" accent={C.blue}>
-          <Row icon="download" iconColor={C.blue} label="Exportar todo" sublabel="Copia plan + entrenos + pesos al portapapeles" onClick={handleExportAll} right={exportCopied ? '✓' : undefined} />
-          <Row icon="download" iconColor={C.blue} label="Descargar como archivo" sublabel="Descarga un .json con todos tus datos" onClick={handleDownloadAll} />
-          <Row icon="upload" iconColor={C.amber} label="Restaurar datos" sublabel="Importa un backup completo" onClick={() => setShowImport(true)} />
-          <Row icon="trash" iconColor={C.red} label="Borrar todos los datos" sublabel="Elimina plan, entrenos y pesos" onClick={() => setConfirmClear(true)} danger />
+      {userEmail && (
+        <Section title="Cuenta">
+          <Row icon="key" iconColor={C.success} label={userEmail} sublabel="Sesión iniciada · datos en la nube" />
+          <Row icon="close" iconColor={C.danger} label="Cerrar sesión" onClick={onSignOut} danger last />
         </Section>
+      )}
 
-        {/* AI Key */}
-        <Section title="ASISTENTE IA" accent={C.purple}>
-          {apiKey ? (
-            <>
-              <Row icon="key" iconColor={C.green} label="API Key configurada" sublabel={`sk-...${apiKey.slice(-8)}`} right="Activa" />
-              <Row icon="edit" iconColor={C.blue} label="Cambiar API key" onClick={() => setShowApiInput(p => !p)} />
-              <Row icon="trash" iconColor={C.red} label="Eliminar API key" onClick={handleClearApiKey} danger />
-            </>
-          ) : (
-            <Row icon="key" iconColor={C.amber} label="Configurar API key" sublabel="Necesaria para el asistente IA" onClick={() => setShowApiInput(p => !p)} />
-          )}
-          {showApiInput && (
-            <div style={{ padding: '14px 18px', borderTop: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 11, color: C.textMid, fontFamily: mono, marginBottom: 8, lineHeight: 1.6 }}>
-                Obtén tu clave en console.anthropic.com. Se guarda solo en tu dispositivo.
-              </div>
-              <input type="password" placeholder="sk-ant-..." value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveApiKey()} style={{ ...inp, marginBottom: 8 }} />
-              <button onClick={handleSaveApiKey} style={{ width: '100%', padding: 10, background: C.purple, color: '#fff', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Guardar clave</button>
+      <Section title="Genera tu plan con Claude">
+        <Row icon="sparkle" iconColor={C.primary} label="Prompt para generar tu plan" sublabel="Personaliza y copia para usarlo en Claude" onClick={() => setShowPromptEditor(p => !p)} right={showPromptEditor ? '▲' : '▼'} last={!showPromptEditor} />
+        {showPromptEditor && (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field label="Objetivo">
+              <textarea style={{ ...inp, resize: 'none' }} rows={3} value={promptGoal} onChange={e => setPromptGoal(e.target.value)} placeholder="ej: Correr una media maratón en abril de 2027 por debajo de 2h y perder 5 kg" />
+            </Field>
+            <Field label="Nivel actual">
+              <input style={inp} value={promptLevel} onChange={e => setPromptLevel(e.target.value)} placeholder="ej: corro 5 km en 30 min, gym 2 días/semana" />
+            </Field>
+            <Field label="Restricciones físicas">
+              <input style={inp} value={promptRestrictions} onChange={e => setPromptRestrictions(e.target.value)} placeholder="ej: molestias de rodilla, sin saltos" />
+            </Field>
+            <Field label="Fecha de inicio">
+              <input type="date" style={inp} value={promptStartDate} onChange={e => setPromptStartDate(e.target.value)} />
+            </Field>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Field label="Semanas" style={{ flex: 1 }}>
+                <input type="number" style={inp} value={promptWeeks} onChange={e => setPromptWeeks(e.target.value)} min="1" max="52" />
+              </Field>
+              <Field label="Días por semana" style={{ flex: 1 }}>
+                <input type="number" style={inp} value={promptDays} onChange={e => setPromptDays(e.target.value)} min="1" max="7" placeholder="—" />
+              </Field>
             </div>
-          )}
-        </Section>
 
-        {/* Plan Prompt */}
-        <Section title="GENERA TU PLAN CON CLAUDE" accent={C.lime}>
-          <div style={{ padding: '0 0 0 0' }}>
-            <Row icon="sparkle" iconColor={C.lime} label="Prompt para generar tu plan" sublabel="Personaliza y copia para usarlo en Claude" onClick={() => setShowPromptEditor(p => !p)} right={showPromptEditor ? '▲' : '▼'} />
-            {showPromptEditor && (
-              <div style={{ padding: '16px 18px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: C.lime, fontFamily: mono, marginBottom: 5 }}>OBJETIVO</div>
-                    <textarea style={{ ...inp, resize: 'none', fontFamily: sans }} rows={3} value={promptGoal} onChange={e => setPromptGoal(e.target.value)} placeholder="ej: Correr una media maratón en abril de 2027 por debajo de 2h y perder 5 kg" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>NIVEL ACTUAL</div>
-                    <input style={inp} value={promptLevel} onChange={e => setPromptLevel(e.target.value)} placeholder="ej: corro 5 km en 30 min, gym 2 días/semana" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>RESTRICCIONES FÍSICAS</div>
-                    <input style={inp} value={promptRestrictions} onChange={e => setPromptRestrictions(e.target.value)} placeholder="ej: L5-S1: sin carga axial" />
-                  </div>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>FECHA INICIO</div>
-                      <input type="date" style={{ ...inp }} value={promptStartDate} onChange={e => setPromptStartDate(e.target.value)} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>SEMANAS</div>
-                      <input type="number" style={inp} value={promptWeeks} onChange={e => setPromptWeeks(e.target.value)} min="1" max="52" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 5 }}>DÍAS/SEM</div>
-                      <input type="number" style={inp} value={promptDays} onChange={e => setPromptDays(e.target.value)} min="1" max="7" placeholder="—" />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 6 }}>PROMPT GENERADO</div>
-                  <div style={{ fontSize: 11, color: C.textMid, fontFamily: mono, lineHeight: 1.7, maxHeight: 180, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {prompt.slice(0, 400)}...
-                  </div>
-                </div>
-
-                <button onClick={copyPrompt} style={{ width: '100%', padding: 12, background: promptCopied ? C.greenDeep : C.lime, color: promptCopied ? '#fff' : '#0e0e11', border: 'none', borderRadius: 10, fontFamily: mono, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Icon name="copy" size={15} color={promptCopied ? '#fff' : '#0e0e11'} />
-                  {promptCopied ? '✓ Prompt copiado' : 'Copiar prompt completo'}
-                </button>
-
-                <div style={{ fontSize: 11, color: C.textLow, fontFamily: mono, marginTop: 10, lineHeight: 1.6, textAlign: 'center' }}>
-                  Pégalo en Claude → copia el JSON que te dé → ve a Entrenos → Importar plan
-                </div>
+            <div style={{ background: C.inset, borderRadius: 18, padding: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.textMid, marginBottom: 6 }}>Vista previa del prompt</div>
+              <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, maxHeight: 160, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {prompt.slice(0, 400)}...
               </div>
-            )}
+            </div>
+
+            <Button variant={promptCopied ? 'success' : 'primary'} icon="copy" onClick={copyPrompt}>
+              {promptCopied ? '✓ Prompt copiado' : 'Copiar prompt completo'}
+            </Button>
+
+            <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, textAlign: 'center' }}>
+              Pégalo en Claude → copia el JSON que te dé → Entrenos → Importar plan
+            </div>
           </div>
-        </Section>
-
-        {/* Plan info */}
-        {getPlan() && (
-          <Section title="PLAN ACTIVO" accent={C.blue}>
-            <Row icon="run" iconColor={C.blue} label={getPlan()?.name || 'Plan sin nombre'} sublabel={`${getPlan()?.weeks?.length || 0} semanas · Inicio: ${getPlan()?.startDate || '—'}`} />
-          </Section>
         )}
+      </Section>
 
-        {/* Version & Update */}
-        <Section title="VERSIÓN Y ACTUALIZACIÓN" accent={C.textMid}>
-          <Row icon="refresh" iconColor={C.blue} label="Forzar actualización" sublabel="Borra la caché y recarga la última versión" onClick={handleForceUpdate} />
+      {plan && (
+        <Section title="Plan activo">
+          <Row icon="run" iconColor={C.success} label={plan.name || 'Plan sin nombre'} sublabel={`${plan.weeks?.length || 0} semanas · Inicio: ${plan.startDate || '—'}`} last />
         </Section>
+      )}
 
-        <div style={{ fontSize: 11, color: C.textLow, fontFamily: mono, textAlign: 'center', lineHeight: 1.7, padding: '8px 0' }}>
-          HealthyApp · v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'} · Datos guardados en tu dispositivo
-        </div>
-      </div>
+      <Section title="Asistente IA">
+        {apiKey ? (
+          <>
+            <Row icon="key" iconColor={C.success} label="API key configurada" sublabel={`sk-...${apiKey.slice(-8)}`} right="Activa" />
+            <Row icon="edit" iconColor={C.accent} label="Cambiar API key" onClick={() => setShowApiInput(p => !p)} />
+            <Row icon="trash" iconColor={C.danger} label="Eliminar API key" onClick={handleClearApiKey} danger last={!showApiInput} />
+          </>
+        ) : (
+          <Row icon="key" iconColor={C.secondary} label="Configurar API key" sublabel="Necesaria para el asistente IA" onClick={() => setShowApiInput(p => !p)} last={!showApiInput} />
+        )}
+        {showApiInput && (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 14, color: C.textMid, lineHeight: 1.55 }}>
+              Obtén tu clave en console.anthropic.com. Se guarda solo en tu dispositivo.
+            </div>
+            <input type="password" aria-label="API key" placeholder="sk-ant-..." value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveApiKey()} style={inp} />
+            <Button onClick={handleSaveApiKey} disabled={!apiKeyInput.trim()}>Guardar clave</Button>
+          </div>
+        )}
+      </Section>
+
+      <Section title="Backup y restauración">
+        <Row icon="copy" iconColor={C.accent} label="Exportar todo" sublabel="Copia plan, entrenos y pesos al portapapeles" onClick={handleExportAll} right={exportCopied ? '✓' : undefined} />
+        <Row icon="download" iconColor={C.accent} label="Descargar como archivo" sublabel="Descarga un .json con todos tus datos" onClick={handleDownloadAll} />
+        <Row icon="upload" iconColor={C.secondary} label="Restaurar datos" sublabel="Importa un backup completo" onClick={() => setShowImport(true)} />
+        <Row icon="trash" iconColor={C.danger} label="Borrar todos los datos" sublabel="Elimina plan, entrenos y pesos" onClick={() => setConfirmClear(true)} danger last />
+      </Section>
+
+      <Section title="Versión y actualización">
+        <Row icon="refresh" iconColor={C.accent} label="Forzar actualización" sublabel="Borra la caché y recarga la última versión" onClick={handleForceUpdate} last />
+      </Section>
+
+      <div style={{ fontSize: 13, color: C.textMid, textAlign: 'center', lineHeight: 1.7, padding: '4px 0' }}>
+        {APP_NAME} · v{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '—'}
       </div>
 
-      {/* Import modal */}
       {showImport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setShowImport(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 18, width: '100%', maxWidth: 480, padding: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: display, marginBottom: 6 }}>Restaurar datos</div>
-            <div style={{ fontSize: 12, color: C.textMid, fontFamily: mono, marginBottom: 12, lineHeight: 1.6 }}>Pega el JSON exportado con exportAll. Reemplaza todos los datos actuales.</div>
-            <textarea placeholder='{ "plan": ..., "completed": ..., "weight": ... }' value={importText} onChange={e => setImportText(e.target.value)} rows={8} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, color: C.text, fontFamily: mono, fontSize: 11, outline: 'none', resize: 'none' }} />
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={handleImportAll} style={{ flex: 1, padding: 11, background: C.blue, color: '#fff', border: 'none', borderRadius: 8, fontFamily: mono, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Restaurar</button>
-              <button onClick={() => setShowImport(false)} style={{ flex: 1, padding: 11, background: C.surfaceHigh, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
-            </div>
-          </div>
-        </div>
+        <Sheet title="Restaurar datos" onClose={() => setShowImport(false)} footer={<Button onClick={handleImportAll} disabled={!importText.trim()}>Restaurar</Button>}>
+          <div style={{ fontSize: 15, color: C.textMid, marginBottom: 12, lineHeight: 1.55 }}>Pega el JSON de «Exportar todo». Reemplaza todos los datos actuales.</div>
+          <textarea aria-label="JSON del backup" placeholder='{ "plan": ..., "completed": ..., "weight": ... }' value={importText} onChange={e => setImportText(e.target.value)} rows={8} style={{ ...inp, fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'none' }} />
+        </Sheet>
       )}
 
-      {/* Confirm clear */}
       {confirmClear && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setConfirmClear(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: C.surfaceHigh, border: `1px solid ${C.red}44`, borderRadius: 18, width: '100%', maxWidth: 400, padding: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: display, marginBottom: 8 }}>¿Borrar todo?</div>
-            <div style={{ fontSize: 13, color: C.textMid, marginBottom: 20, lineHeight: 1.6 }}>Se eliminarán el plan, todos los entrenos marcados y todos los registros de peso. Esta acción no se puede deshacer.</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { clearAll(); setConfirmClear(false); showToast('✓ Datos eliminados. Recarga la app.'); }} style={{ flex: 1, padding: 12, background: C.red, color: '#fff', border: 'none', borderRadius: 10, fontFamily: display, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Sí, borrar todo</button>
-              <button onClick={() => setConfirmClear(false)} style={{ flex: 1, padding: 12, background: C.surfaceHigh, color: C.text, border: `1px solid ${C.border}`, borderRadius: 10, fontFamily: mono, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+        <Sheet
+          title="¿Borrar todo?"
+          onClose={() => setConfirmClear(false)}
+          footer={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Button variant="danger" onClick={() => { clearAll(); setConfirmClear(false); showToast('✓ Datos eliminados. Recarga la app.'); }}>Sí, borrar todo</Button>
+              <Button variant="glass" onClick={() => setConfirmClear(false)}>Cancelar</Button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.6 }}>Se eliminarán el plan, todos los entrenos marcados y todos los registros de peso. Esta acción no se puede deshacer.</div>
+        </Sheet>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', background: C.surfaceHigh, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 20px', fontSize: 13, color: C.text, fontFamily: mono, zIndex: 500, whiteSpace: 'nowrap', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-          {toast}
-        </div>
-      )}
-    </div>
+      {toast && <Toast>{toast}</Toast>}
+    </Screen>
   );
 }

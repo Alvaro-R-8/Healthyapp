@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { C, mono, sans, display } from '../utils/design.js';
+import { C, sans, display, APP_NAME } from '../utils/design.js';
 import { supabase, supabaseConfigured } from '../utils/supabaseClient.js';
 import Icon from './Icon.jsx';
+import { GlassCard, Button, LogoMark, inputStyle } from './ui.jsx';
 
 const LINK_RE = /https:\/\/[^\s"'<>]+\/auth\/v1\/verify\?[^\s"'<>]+/i;
 
@@ -30,7 +31,7 @@ export default function AuthScreen() {
   const handleVerifyLink = async () => {
     setLinkError('');
     const match = pastedLink.match(LINK_RE);
-    if (!match) { setLinkError('No hemos encontrado un enlace de HealthyApp/Supabase en ese texto.'); return; }
+    if (!match) { setLinkError(`No hemos encontrado un enlace de inicio de sesión de ${APP_NAME} en ese texto.`); return; }
     let url;
     try { url = new URL(match[0]); } catch { setLinkError('El enlace no es válido.'); return; }
     const token_hash = url.searchParams.get('token');
@@ -58,90 +59,89 @@ export default function AuthScreen() {
     window.location.reload();
   };
 
-  const inp = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', color: C.text, fontFamily: mono, fontSize: 14, outline: 'none', width: '100%' };
+  const wrap = { minHeight: '100vh', color: C.text, fontFamily: sans, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(env(safe-area-inset-top) + 24px) 20px 24px' };
 
   if (!supabaseConfigured) {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ maxWidth: 380, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: display, marginBottom: 10 }}>Falta configurar Supabase</div>
-          <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.7 }}>
-            Añade <code style={{ color: C.amber }}>VITE_SUPABASE_URL</code> y <code style={{ color: C.amber }}>VITE_SUPABASE_ANON_KEY</code> como variables de entorno (o GitHub Secrets) y vuelve a compilar la app.
+      <div style={wrap}>
+        <GlassCard radius={30} padding={24} style={{ maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: display, marginBottom: 10 }}>Falta configurar Supabase</div>
+          <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.65 }}>
+            Añade <code style={{ color: C.primaryText }}>VITE_SUPABASE_URL</code> y <code style={{ color: C.primaryText }}>VITE_SUPABASE_ANON_KEY</code> como variables de entorno (o GitHub Secrets) y vuelve a compilar la app.
           </div>
-        </div>
+        </GlassCard>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: sans, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 380 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: C.blue + '1a', border: `1px solid ${C.blue}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-          <Icon name="lock" size={22} color={C.blue} />
+    <div style={wrap}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 26 }}>
+          <LogoMark size={76} />
+          <div style={{ fontFamily: display, fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 16 }}>{APP_NAME}</div>
+          <div style={{ fontSize: 15, color: C.textMid, marginTop: 4 }}>Tu entreno y tu peso, en un solo sitio</div>
         </div>
-        <div style={{ fontSize: 10, color: C.blue, letterSpacing: '0.2em', fontFamily: mono, marginBottom: 8 }}>HEALTHYAPP</div>
-        <div style={{ fontSize: 28, fontWeight: 800, fontFamily: display, lineHeight: 1.1, marginBottom: 10 }}>Inicia sesión</div>
 
-        {sent ? (
-          <>
-            <div style={{ background: C.surfaceHigh, border: `1px solid ${C.green}44`, borderRadius: 14, padding: 18, marginBottom: 16 }}>
-              <div style={{ fontSize: 14, color: C.text, fontWeight: 600, marginBottom: 6 }}>✓ Email enviado</div>
-              <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
-                Revisa tu correo (<span style={{ color: C.text }}>{email}</span>). <strong style={{ color: C.text }}>No toques el enlace</strong> — mantén el dedo pulsado sobre él, elige <strong style={{ color: C.text }}>"Copiar"</strong> y pégalo aquí abajo. Así evitas que se abra Safari y se queda dentro de esta app.
+        <GlassCard radius={30} padding={22} style={{ display: 'flex', flexDirection: 'column', gap: 12, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+          {sent ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.success + '2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="check" size={18} color={C.success} />
+                </div>
+                <div style={{ fontFamily: display, fontSize: 20, fontWeight: 800 }}>Email enviado</div>
               </div>
-            </div>
-            <div style={{ fontSize: 10, color: C.textLow, fontFamily: mono, marginBottom: 6, letterSpacing: '0.08em' }}>PEGAR ENLACE DEL EMAIL</div>
-            <textarea
-              placeholder="https://...supabase.co/auth/v1/verify?token=..."
-              value={pastedLink}
-              onChange={e => setPastedLink(e.target.value)}
-              rows={3}
-              style={{ ...inp, marginBottom: 10, fontSize: 11, resize: 'none' }}
-            />
-            {linkError && <div style={{ fontSize: 12, color: C.red, marginBottom: 10, fontFamily: mono }}>{linkError}</div>}
-            <button
-              onClick={handleVerifyLink}
-              disabled={verifying || !pastedLink.trim()}
-              style={{ width: '100%', padding: 13, background: pastedLink.trim() ? C.green : C.surfaceHigh, color: pastedLink.trim() ? '#08150d' : C.textLow, border: 'none', borderRadius: 10, fontFamily: display, fontSize: 15, fontWeight: 700, cursor: pastedLink.trim() ? 'pointer' : 'default', marginBottom: 10 }}
-            >
-              {verifying ? 'Comprobando...' : 'Entrar con este enlace'}
-            </button>
-            <button
-              onClick={() => { setSent(false); setPastedLink(''); setLinkError(''); }}
-              style={{ width: '100%', padding: 0, background: 'none', border: 'none', color: C.textLow, fontFamily: mono, fontSize: 12, cursor: 'pointer' }}
-            >
-              ← Usar otro email / reenviar
-            </button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, marginBottom: 20 }}>
-              Te enviamos un enlace mágico a tu email, sin contraseñas. Tus datos se guardan en la nube y estarán disponibles en todos tus dispositivos.
-            </div>
-            <input
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-              style={{ ...inp, marginBottom: 10 }}
-            />
-            {error && <div style={{ fontSize: 12, color: C.red, marginBottom: 10, fontFamily: mono }}>{error}</div>}
-            <button
-              onClick={handleSend}
-              disabled={loading || !email.trim()}
-              style={{ width: '100%', padding: 13, background: email.trim() ? C.blue : C.surfaceHigh, color: email.trim() ? '#fff' : C.textLow, border: 'none', borderRadius: 10, fontFamily: display, fontSize: 15, fontWeight: 700, cursor: email.trim() ? 'pointer' : 'default' }}
-            >
-              {loading ? 'Enviando...' : 'Enviar enlace mágico'}
-            </button>
-          </>
-        )}
+              <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.6 }}>
+                Revisa tu correo (<span style={{ color: C.text }}>{email}</span>). <strong style={{ color: C.text }}>No toques el enlace</strong>: mantén el dedo pulsado sobre él, elige <strong style={{ color: C.text }}>«Copiar»</strong> y pégalo aquí abajo. Así no se abre Safari y te quedas dentro de la app.
+              </div>
+              <textarea
+                aria-label="Enlace del email"
+                placeholder="https://...supabase.co/auth/v1/verify?token=..."
+                value={pastedLink}
+                onChange={e => setPastedLink(e.target.value)}
+                rows={3}
+                style={{ ...inputStyle(), fontSize: 13, resize: 'none' }}
+              />
+              {linkError && <div style={{ fontSize: 14, color: C.dangerText }}>{linkError}</div>}
+              <Button onClick={handleVerifyLink} disabled={verifying || !pastedLink.trim()}>
+                {verifying ? 'Comprobando...' : 'Entrar con este enlace'}
+              </Button>
+              <button
+                onClick={() => { setSent(false); setPastedLink(''); setLinkError(''); }}
+                style={{ padding: 8, background: 'none', border: 'none', color: C.textMid, fontSize: 14, fontWeight: 600 }}
+              >
+                ← Usar otro email o reenviar
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: display, fontSize: 22, fontWeight: 800 }}>Inicia sesión</div>
+              <div style={{ fontSize: 15, color: C.textMid, lineHeight: 1.6 }}>
+                Te enviamos un enlace mágico a tu email, sin contraseñas. Tus datos se guardan en la nube y estarán en todos tus dispositivos.
+              </div>
+              <input
+                type="email"
+                aria-label="Email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                style={inputStyle()}
+              />
+              {error && <div style={{ fontSize: 14, color: C.dangerText }}>{error}</div>}
+              <Button onClick={handleSend} disabled={loading || !email.trim()}>
+                {loading ? 'Enviando...' : 'Enviar enlace mágico'}
+              </Button>
+            </>
+          )}
+        </GlassCard>
 
         <button
           onClick={handleForceUpdate}
-          style={{ width: '100%', marginTop: 28, padding: 0, background: 'none', border: 'none', color: C.textLow, fontFamily: mono, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          style={{ width: '100%', marginTop: 22, padding: 10, background: 'none', border: 'none', color: C.textMid, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
         >
-          <Icon name="refresh" size={12} color={C.textLow} />
+          <Icon name="refresh" size={14} color={C.textMid} />
           Forzar actualización de la app
         </button>
       </div>

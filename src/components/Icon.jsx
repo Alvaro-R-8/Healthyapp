@@ -1,9 +1,13 @@
 export default function Icon({ name, size = 16, color = 'currentColor' }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: '2', strokeLinecap: 'round', strokeLinejoin: 'round' };
   const icons = {
-    run: <svg {...p}><circle cx="12" cy="4" r="1.5"/><path d="M8 12l2-4 3 2 2-4"/><path d="M6 20l3-6 3 2 3-6"/></svg>,
-    gym: <svg {...p}><path d="M6 4v16M18 4v16M4 8h4M16 8h4M4 16h4M16 16h4M8 12h8"/></svg>,
-    rest: <svg {...p}><path d="M12 2a10 10 0 0 0 0 20"/><path d="M12 6v6l4 2"/></svg>,
+    run: <svg {...p}><circle cx="13" cy="4" r="1.6"/><path d="M7 21l3-6 3 2 1-5 3 3h3M9 9l3-2 3 2"/></svg>,
+    long: <svg {...p}><path d="M3 17l5-6 4 3 4-6 5 5"/><path d="M3 21h18"/></svg>,
+    gym: <svg {...p}><path d="M6 5v14M18 5v14M3 9h3M18 9h3M3 15h3M18 15h3M6 12h12"/></svg>,
+    rest: <svg {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>,
+    home: <svg {...p}><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>,
+    sliders: <svg {...p}><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>,
+    scale: <svg {...p}><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8.5 10a5 5 0 0 1 7 0M12 10l1.5-1.5"/></svg>,
     check: <svg {...p} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
     chevron: <svg {...p}><polyline points="9 18 15 12 9 6"/></svg>,
     chevronDown: <svg {...p}><polyline points="6 9 12 15 18 9"/></svg>,
@@ -29,7 +33,10 @@ export default function Icon({ name, size = 16, color = 'currentColor' }) {
     import: <svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
     info: <svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
     alert: <svg {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    sparkle: <svg {...p}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>,
+    sparkle: <svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>,
+    sun: <svg {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>,
+    monitor: <svg {...p}><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>,
+    note: <svg {...p}><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>,
     refresh: <svg {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
   };
   return icons[name] || null;

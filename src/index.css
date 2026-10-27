@@ -1,26 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Defaults before JS applies the theme (applyTheme in utils/design.js). */
+:root {
+  --bg: #140B12;
+  --text: #FFF5F2;
+  --line: #3A2532;
+  --aurora1: rgba(255,94,126,0.40);
+  --aurora2: rgba(167,139,250,0.26);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #FFF7F3;
+    --text: #2A1420;
+    --line: #EAD9DE;
+    --aurora1: rgba(255,94,126,0.24);
+    --aurora2: rgba(255,181,71,0.26);
+    color-scheme: light;
+  }
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   height: 100%;
-  background: #060a10;
-  color: #F9FAFB;
-  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'tnum' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-#root { min-height: 100%; }
+#root { min-height: 100%; position: relative; z-index: 1; }
+
+/* Aurora: two soft glows fixed behind the content, which is what the glass
+   surfaces blur against. */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  width: 420px; height: 420px; right: -180px; top: -160px;
+  background: radial-gradient(circle, var(--aurora1), transparent 70%);
+}
+body::after {
+  width: 380px; height: 380px; left: -190px; top: 55%;
+  background: radial-gradient(circle, var(--aurora2), transparent 70%);
+}
 
 button { font-family: inherit; cursor: pointer; }
 input, textarea, select { font-family: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #FF8FA6;
+  outline-offset: 2px;
+}
 
 /* Prevent iOS Safari auto-zoom when focusing inputs (requires font-size >= 16px) */
 @supports (-webkit-touch-callout: none) {
@@ -30,9 +73,11 @@ input, textarea, select { font-family: inherit; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.3); }
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); }
 
-::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a2235; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
