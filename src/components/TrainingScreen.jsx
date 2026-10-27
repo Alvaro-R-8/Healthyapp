@@ -457,8 +457,15 @@ export default function TrainingScreen() {
     setSelectedDate(defaultDate(newPlan.weeks[idx]));
   };
 
-  const handleEndPlan = () => {
-    endCurrentPlan();
+  const handleEndPlan = async () => {
+    const { error, missingTable } = await endCurrentPlan();
+    if (error) {
+      showToast(missingTable
+        ? 'Para guardar planes falta ejecutar el SQL de «Mis planes» en Supabase. Tu plan sigue activo.'
+        : 'No se ha podido guardar el plan. Sigue activo; inténtalo con conexión.');
+      setShowPlans(false);
+      return;
+    }
     setPlanState(null);
     setCompleted({});
     setComments({});

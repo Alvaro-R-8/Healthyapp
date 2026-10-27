@@ -217,25 +217,28 @@ export function replacePlan(plan) {
   });
 }
 
-// "Terminar plan": archive it and leave no active plan. Nothing is deleted
-// unless the archive was saved (here a missing table blocks the deletion).
-export function endCurrentPlan() {
-  if (!cache.plan) return;
+// "Terminar plan": archive it and leave no active plan. Waits for the archive
+// before touching anything, so if it fails (offline, or the plan_history table
+// hasn't been created yet) the plan stays active both here and in the cloud.
+// Resolves to { error, missingTable }.
+export async function endCurrentPlan() {
+  if (!cache.plan || !cache.userId) return { error: null };
   const row = historyRow(cache.plan, cache.completed, cache.comments);
+  const res = await attempt(() => supabase.from('plan_history').upsert(row, { onConflict: 'id' }));
+  if (res) {
+    console.error('[sync] end plan:', res);
+    return { error: res, missingTable: isMissingTable(res) };
+  }
   cache.plan = null;
   cache.completed = {};
   cache.comments = {};
   const uid = cache.userId;
   write('plan', async () => {
-    const res = await supabase.from('plan_history').upsert(row, { onConflict: 'id' });
-    if (res.error) {
-      if (isMissingTable(res.error)) notify(MISSING_HISTORY_MSG);
-      return res;
-    }
     const removed = await supabase.from('plans').delete().eq('user_id', uid);
     if (removed.error) return removed;
     return clearProgress(uid);
   });
+  return { error: null };
 }
 
 export async function listPlanHistory() {
