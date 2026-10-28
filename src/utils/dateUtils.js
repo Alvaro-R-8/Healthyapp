@@ -63,3 +63,36 @@ export function groupByDay(sessions = []) {
 export function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
+
+// Local calendar date as YYYY-MM-DD (todayStr() is UTC, which is the wrong
+// day for a few hours around midnight in Spain).
+export function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Streak of consecutive training days fully completed, walking back from
+// today. Rest days neither count nor break it; a past day with any workout
+// left undone breaks it; today only adds once everything is done (it never
+// breaks it). `best` is the longest such run up to today.
+export function trainingStreak(plan, completed = {}, today = localToday()) {
+  const days = groupByDay((plan?.weeks || []).flatMap(w => w.sessions || []))
+    .filter(d => d.training.length && /^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date <= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const done = (d) => d.training.every(s => completed[s.id]);
+
+  let best = 0;
+  let run = 0;
+  for (const d of days) {
+    if (done(d)) best = Math.max(best, ++run);
+    else if (d.date < today) run = 0;
+  }
+
+  let current = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    const d = days[i];
+    if (done(d)) current++;
+    else if (d.date < today) break;
+  }
+  return { current, best, missedBefore: days.some(d => d.date < today && !done(d)) };
+}

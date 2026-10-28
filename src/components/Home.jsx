@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { C, GRADIENT, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON } from '../utils/design.js';
 import { getPlan, getCompleted, toggleCompleted, getWeight } from '../utils/storage.js';
-import { isToday, todayStr, formatDateShort } from '../utils/dateUtils.js';
+import { isToday, todayStr, formatDateShort, trainingStreak } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
 import AiChat from './AiChat.jsx';
 import { Screen, GlassCard, Button, Ring, Logo } from './ui.jsx';
@@ -131,6 +131,11 @@ export default function Home({ onNavigate }) {
   const active = week ? week.sessions.filter(s => s.type !== 'rest') : [];
   const doneCount = active.filter(s => completed[s.id]).length;
   const weekIndex = week ? plan.weeks.indexOf(week) + 1 : 0;
+  const streak = useMemo(() => trainingStreak(plan, completed), [plan, completed]);
+  const days = (n) => `${n} día${n === 1 ? '' : 's'}`;
+  const streakNote = streak.current === 0
+    ? (streak.missedBefore ? 'Vuelve a empezar hoy' : 'Empieza hoy')
+    : streak.best > streak.current ? `Mejor: ${days(streak.best)}` : 'Sin fallar un entreno';
 
   const sorted = [...(weight.entries || [])].sort((a, b) => a.date.localeCompare(b.date));
   const latest = sorted[sorted.length - 1];
@@ -194,20 +199,22 @@ export default function Home({ onNavigate }) {
         )}
 
         {week && active.length > 0 && (
-          <GlassCard padding={16} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Ring size={60} value={doneCount / active.length} label={`${doneCount} de ${active.length} entrenos esta semana`}>
-              <span style={{ fontFamily: display, fontSize: 15, fontWeight: 800 }}>{doneCount}/{active.length}</span>
-            </Ring>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{week.label || `Semana ${weekIndex}`}</div>
-              <div style={{ fontSize: 14, color: C.textMid }}>
-                {weekIndex} de {plan.weeks.length}{week.totalKm > 0 ? ` · ${week.totalKm} km` : ''}{week.isRecovery ? ' · recuperación' : ''}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+            <GlassCard as="button" onClick={() => onNavigate('training')} padding={16} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', color: C.text, width: '100%' }}>
+              <Ring size={56} value={doneCount / active.length} label={`${doneCount} de ${active.length} entrenos esta semana`}>
+                <span style={{ fontFamily: display, fontSize: 14, fontWeight: 800 }}>{doneCount}/{active.length}</span>
+              </Ring>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: C.textMid }}>{week.isRecovery ? 'Recuperación' : 'Semana'}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap' }}>{weekIndex} de {plan.weeks.length}</div>
               </div>
-            </div>
-            <button onClick={() => onNavigate('training')} aria-label="Ver semana" style={{ background: 'none', border: 'none', padding: 8 }}>
-              <Icon name="chevron" size={18} color={C.textMid} />
-            </button>
-          </GlassCard>
+            </GlassCard>
+            <GlassCard padding={16} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ fontSize: 13, color: C.textMid }}>Racha</div>
+              <div style={{ fontFamily: display, fontSize: 26, fontWeight: 800, lineHeight: 1.15, color: streak.current ? C.text : C.textMid }}>{days(streak.current)}</div>
+              <div style={{ fontSize: 13, color: C.textMid }}>{streakNote}</div>
+            </GlassCard>
+          </div>
         )}
 
         <GlassCard as="button" onClick={() => onNavigate('weight')} padding="16px 18px" style={{ display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', color: C.text, width: '100%' }}>
