@@ -207,3 +207,15 @@ export function sessionSummary(session) {
   const n = session.exercises?.length;
   return [session.subtitle, n ? `${n} ejercicio${n === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
 }
+
+// Kilometres of an on-foot session (runs, walking, treadmill) from its
+// distance text ("8 km", "6,6km", "8-10 km" → first number). Other kinds and
+// distances in metres return 0, matching the plan's weekly running km.
+const KM_KINDS = ['easy', 'tempo', 'long', 'walk', 'treadmill'];
+export function sessionKm(session) {
+  if (!KM_KINDS.includes(sessionKind(session))) return 0;
+  const m = String(session.distance || '').match(/(\d+(?:[.,]\d+)?)(?:\s*[-–a]\s*\d+(?:[.,]\d+)?)?\s*km/i);
+  return m ? parseFloat(m[1].replace(',', '.')) : 0;
+}
+
+export const fmtKm = (n) => (Math.round(n * 10) / 10).toString().replace('.', ',');

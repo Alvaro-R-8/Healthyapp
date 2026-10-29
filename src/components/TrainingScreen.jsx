@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { C, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON } from '../utils/design.js';
+import { C, display, sessionKind, sessionColor, sessionSummary, isDistanceSession, KIND_LABEL, KIND_ICON, sessionKm, fmtKm } from '../utils/design.js';
 import { getPlan, setPlan, replacePlan, endCurrentPlan, getCompleted, toggleCompleted, updateSessionInPlan, getComments, setComment } from '../utils/storage.js';
 import { isPast, isToday, formatDateShort, todayStr, groupByDay, dayKey } from '../utils/dateUtils.js';
 import Icon from './Icon.jsx';
@@ -506,6 +506,11 @@ export default function TrainingScreen() {
 
   const active = week ? week.sessions.filter(s => s.type !== 'rest') : [];
   const doneCount = active.filter(s => completed[s.id]).length;
+  // Km done vs planned, from each session's distance; falls back to the
+  // plan's weekly total when sessions carry no km distances.
+  const plannedKm = active.reduce((sum, s) => sum + sessionKm(s), 0);
+  const doneKm = active.filter(s => completed[s.id]).reduce((sum, s) => sum + sessionKm(s), 0);
+  const kmLabel = plannedKm > 0 ? ` · ${fmtKm(doneKm)}/${fmtKm(plannedKm)} km` : week?.totalKm > 0 ? ` · ${week.totalKm} km` : '';
   const others = week ? week.sessions.filter(s => s.type !== 'rest' && dayKey(s) !== selectedDate) : [];
   const multi = selectedDay?.training.length > 1;
 
@@ -540,7 +545,7 @@ export default function TrainingScreen() {
                   {week.sessions[0]?.date && formatDateShort(week.sessions[0].date)} – {week.sessions[week.sessions.length - 1]?.date && formatDateShort(week.sessions[week.sessions.length - 1].date)}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.textMid }}>
-                  {doneCount}/{active.length} hechos{week.totalKm > 0 ? ` · ${week.totalKm} km` : ''}
+                  {doneCount}/{active.length} hechos{kmLabel}
                 </div>
               </div>
 
