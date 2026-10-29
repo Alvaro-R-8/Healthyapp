@@ -143,11 +143,13 @@ const TEXT_KIND = [
   [/pilates/, 'pilates'],
   [/yoga/, 'yoga'],
   [/estiramient|stretch|movilidad/, 'stretch'],
+  [/carrera|correr|rodaje|tirada|\brun/, 'easy'],
 ];
 
 export function sessionKind(session) {
   if (!session || session.type === 'rest') return 'rest';
-  const type = String(session.type || '').toLowerCase();
+  let type = String(session.type || '').toLowerCase();
+  if (['running', 'carrera', 'correr'].includes(type)) type = 'run';
   if (TYPE_KIND[type]) return TYPE_KIND[type];
   const t = `${session.title || ''} ${session.subtitle || ''}`.toLowerCase();
   if (type !== 'run') {
@@ -208,14 +210,24 @@ export function sessionSummary(session) {
   return [session.subtitle, n ? `${n} ejercicio${n === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
 }
 
-// Kilometres of an on-foot session (runs, walking, treadmill) from its
-// distance text ("8 km", "6,6km", "8-10 km" → first number). Other kinds and
-// distances in metres return 0, matching the plan's weekly running km.
+// Kilometres of an on-foot session (runs, walking, treadmill), so the week
+// summary can add up what's done. Reads `distance`, then the subtitle and the
+// title: "8 km", "6,6km", "5 kms", "3 kilómetros", "8-10 km" (first number);
+// a bare number in `distance` counts as km. Metres, other kinds → 0.
 const KM_KINDS = ['easy', 'tempo', 'long', 'walk', 'treadmill'];
+const KM_RE = /(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|a)\s*\d+(?:[.,]\d+)?)?\s*(?:km|kms|kil[oó]metros?)\b/i;
+const toNum = (t) => parseFloat(String(t).replace(',', '.'));
 export function sessionKm(session) {
-  if (!KM_KINDS.includes(sessionKind(session))) return 0;
-  const m = String(session.distance || '').match(/(\d+(?:[.,]\d+)?)(?:\s*[-–a]\s*\d+(?:[.,]\d+)?)?\s*km/i);
-  return m ? parseFloat(m[1].replace(',', '.')) : 0;
+  if (!session || !KM_KINDS.includes(sessionKind(session))) return 0;
+  if (typeof session.distance === 'number') return session.distance;
+  if (typeof session.distanceKm === 'number') return session.distanceKm;
+  const bare = String(session.distance || '').trim().match(/^~?\s*(\d+(?:[.,]\d+)?)$/);
+  if (bare) return toNum(bare[1]);
+  for (const text of [session.distance, session.subtitle, session.title]) {
+    const m = String(text || '').match(KM_RE);
+    if (m) return toNum(m[1]);
+  }
+  return 0;
 }
 
 export const fmtKm = (n) => (Math.round(n * 10) / 10).toString().replace('.', ',');
