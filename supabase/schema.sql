@@ -75,7 +75,7 @@ create policy "Users manage their own weight entries"
 -- ── Weight goal ──────────────────────────────────────────────────────────────
 create table if not exists weight_goals (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  goal_weight numeric not null default 85
+  goal_weight numeric not null
 );
 
 alter table weight_goals enable row level security;

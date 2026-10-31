@@ -4,10 +4,11 @@ import TrainingScreen from './components/TrainingScreen.jsx';
 import WeightScreen from './components/WeightScreen.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
 import AuthScreen from './components/AuthScreen.jsx';
+import Onboarding from './components/Onboarding.jsx';
 import Icon from './components/Icon.jsx';
 import { LogoMark, Toast, GlassCard, Button } from './components/ui.jsx';
 import { supabase, supabaseConfigured } from './utils/supabaseClient.js';
-import { initStore, onSyncMessage } from './utils/storage.js';
+import { initStore, onSyncMessage, getPlan, getWeight } from './utils/storage.js';
 import { C, sans, display, applyTheme, getThemePref, setThemePref, resolveTheme } from './utils/design.js';
 
 function LoadingScreen() {
@@ -93,6 +94,7 @@ export default function App() {
   const [storeReady, setStoreReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [onboarded, setOnboarded] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [themePref, setThemePrefState] = useState(getThemePref);
   const [themeMode, setThemeMode] = useState(() => {
@@ -189,6 +191,21 @@ export default function App() {
   };
 
   if (loadError) return <LoadErrorScreen error={loadError} onRetry={() => setLoadAttempt(n => n + 1)} onSignOut={handleSignOut} />;
+
+  // First run: an account with no plan, weights or goal, which hasn't seen
+  // (or skipped) the welcome on this device yet.
+  const onboardKey = `kora_onboarded_${session.user.id}`;
+  const seenOnboarding = onboarded || (() => { try { return !!localStorage.getItem(onboardKey); } catch { return false; } })();
+  const weight = getWeight();
+  const isNewAccount = !getPlan() && !weight.entries.length && weight.goalWeight == null;
+  if (isNewAccount && !seenOnboarding) {
+    const done = () => {
+      try { localStorage.setItem(onboardKey, '1'); } catch {}
+      setOnboarded(true);
+      setScreen('home');
+    };
+    return <div key={themeMode}><Onboarding onDone={done} />{syncMsg && <Toast>{syncMsg}</Toast>}</div>;
+  }
 
   return (
     // key forces a full re-render after a theme switch so every C.x read refreshes
