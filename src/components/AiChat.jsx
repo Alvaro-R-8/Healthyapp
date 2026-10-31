@@ -4,9 +4,18 @@ import { getApiKey, setApiKey } from '../utils/storage.js';
 import Icon from './Icon.jsx';
 import { Sheet, Button, inputStyle } from './ui.jsx';
 
+// The trainer chat (mode "training") is hidden for now; flip this to bring it
+// back on Inicio and Entrenos. The weight coach is unaffected.
+export const TRAINER_CHAT_ENABLED = false;
+
 // `renderTrigger(open)` lets a screen place its own entry point; without it a
 // floating button sits above the tab bar.
-export default function AiChat({ mode, context, renderTrigger }) {
+export default function AiChat(props) {
+  if (props.mode === 'training' && !TRAINER_CHAT_ENABLED) return null;
+  return <AiChatPanel {...props} />;
+}
+
+function AiChatPanel({ mode, context, renderTrigger }) {
   const [open, setOpen] = useState(false);
   const [keyPrompt, setKeyPrompt] = useState(false);
   const [keyInput, setKeyInput] = useState('');
